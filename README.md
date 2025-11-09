@@ -27,6 +27,90 @@ NHP SecureLocker は、Google Workspace 上で動作する暗号化ファイル�
 
 ---
 
+## 技術仕様詳細
+
+### 暗号化ファイル形式
+
+**ファイル拡張子**: `.yenc`（NHP SecureLocker専用形式）
+
+**パッケージ構造**:
+```
+[JSON Header]
+---
+[Base64 Ciphertext]
+```
+
+**ヘッダー内容（JSON）**:
+```json
+{
+  "version": "1.0",
+  "algorithm": "AES-256-CBC",
+  "kdf": "PBKDF2",
+  "kdfIter": 100000,
+  "kdfSaltB64": "...",      // 16バイトのSalt（Base64）
+  "ivB64": "...",            // 16バイトのIV（Base64）
+  "macB64": "...",           // HMAC-SHA256（Base64）
+  "originalName": "...",     // 元のファイル名
+  "mimeType": "...",         // MIMEタイプ
+  "sizeBytes": 123456,       // 元のファイルサイズ
+  "createdAt": "2025-11-09T12:34:56.789Z"
+}
+```
+
+### 暗号化プロセス
+
+1. **鍵導出**:
+   ```
+   Key = PBKDF2-SHA256(Password, Salt, 100000 iterations, 256 bits)
+   ```
+
+2. **暗号化**:
+   ```
+   Ciphertext = AES-256-CBC.encrypt(Plaintext, Key, IV)
+   ```
+
+3. **MAC生成**（Encrypt-then-MAC）:
+   ```
+   MAC = HMAC-SHA256(Salt || IV || Ciphertext, SECRET_HMAC)
+   ```
+
+4. **パッケージング**:
+   ```
+   Package = JSON(Header) + "\n---\n" + Base64(Ciphertext)
+   ```
+
+### 乱数生成
+
+GASの `CryptoJS.lib.WordArray.random` は環境によって不安定なため、独自実装：
+
+```javascript
+// GAS UUID + HMAC による安全な乱数生成
+seed = UUID + UUID + UUID
+random = HMAC-SHA256(seed, SECRET_HMAC)
+```
+
+### ファイル名マスキング
+
+暗号化ファイルのファイル名は元のファイル名を隠蔽：
+```
+元: 重要資料.pdf
+↓
+暗号化: a1b2c3d4.yenc
+```
+
+元のファイル名は **ヘッダーの `originalName` に保存**され、パスワード通知メールに記載されます。
+
+### 復号方法
+
+**現在**: サーバー側関数 `decryptFile()` でテスト可能（Crypto.gs）
+
+**将来**: ブラウザ復号UI（decrypt.html）を統合予定
+- Web Crypto API による復号
+- パスワード入力 → 即座に復号・ダウンロード
+- サーバーへのパスワード送信なし（完全クライアント側処理）
+
+---
+
 ## システムフロー
 
 ```
@@ -278,21 +362,78 @@ testLogger()
 
 ```
 NHP-SecureLocker/
-├── appsscript.json          # プロジェクト設定
-├── Config.gs                # システム設定・定数
-├── Crypto.gs                # 暗号化エンジン
-├── MailProcessor.gs         # メール処理
-├── DraftGenerator.gs        # ドラフト生成
-├── PasswordNotifier.gs      # パスワード通知
-├── LifecycleManager.gs      # ライフサイクル管理
-├── Logger.gs                # ログ管理
-├── Triggers.gs              # トリガー管理
-├── bootstrap.gs             # 初期セットアップ
-├── TestHarness.gs           # テストハーネス
-├── cryptojs_min.gs          # CryptoJS ライブラリ
-├── decrypt.html             # 復号UI（未統合）
+├── appsscript.json          # プロジェクト設定（Advanced Services、OAuth Scopes）
+├── Config.gs                # システム設定・定数（SYSオブジェクト）
+├── Crypto.gs                # 暗号化エンジン（AES-256-CBC、PBKDF2、HMAC）
+├── MailProcessor.gs         # メール処理（ango@宛検出、添付/リンク暗号化）
+├── DraftGenerator.gs        # ドラフト生成（Advanced Gmail API、同スレッド生成）
+├── PasswordNotifier.gs      # パスワード通知（送信済み検出、宛先抽出、自動送信）
+├── LifecycleManager.gs      # ライフサイクル管理（15日後自動削除）
+├── Logger.gs                # ログ管理（Spreadsheet記録）
+├── Triggers.gs              # トリガー管理（5分ごと、毎日午前2時）
+├── bootstrap.gs             # 初期セットアップ（フォルダ作成、HMAC生成）
+├── TestHarness.gs           # テストハーネス（ドライラン実行）
+├── cryptojs_min.gs          # CryptoJS ライブラリ（AES、PBKDF2、HMAC等）
+├── decrypt.html             # 復号UI（未統合、将来ブラウザ復号用）
 └── README.md                # このファイル
 ```
+
+### 各ファイルの詳細
+
+#### **Config.gs** - システム設定
+- `SYS` オブジェクト: 全設定を一元管理
+- トリガーアドレス、暗号化設定、ライフサイクル設定
+- ラベル名、追跡IDパターン、メール設定
+
+#### **Crypto.gs** - 暗号化エンジン
+- `generateSecurePassword()` - 24桁パスワード生成
+- `generateTrackingId()` - 追跡ID生成（ANGO-XXXXXXXX）
+- `encryptFile()` - AES-256-CBC暗号化
+- `decryptFile()` - 復号（テスト用）
+- `selfTest_EncryptSmallBlob()` - セルフテスト
+
+#### **MailProcessor.gs** - メール処理
+- `processIncomingMails()` - 未処理メール検出（5分ごとトリガー）
+- `processMessage()` - 個別メッセージ処理
+- `processAttachment()` - 添付ファイル暗号化
+- `processDriveLink()` - Driveリンク暗号化
+- `extractDriveLinks()` - 本文からリンク抽出
+
+#### **DraftGenerator.gs** - ドラフト生成
+- `createDraftInThread()` - 同スレッドドラフト作成（Advanced Gmail API）
+- `createRawMessage()` - RFC 2822形式メッセージ生成
+- Bcc自動設定（ango@nhp.jp + 送信者）
+
+#### **PasswordNotifier.gs** - パスワード通知
+- `processSentMailsForPassword()` - 送信済み検出（5分ごとトリガー）
+- `extractTrackingId()` - 本文から追跡ID抽出
+- `extractRecipients()` - To/Cc/Bcc全員抽出（Advanced Gmail API）
+- `sendPasswordNotification()` - パスワード一斉送信
+
+#### **LifecycleManager.gs** - ライフサイクル管理
+- `sweepExpiredFiles()` - 期限切れ削除（毎日午前2時トリガー）
+- `deleteFile()` - Drive削除（ゴミ箱 or 完全削除）
+- `emergencyDeleteByTrackingId()` - 緊急削除（手動実行用）
+
+#### **Logger.gs** - ログ管理
+- `initLogSpreadsheet()` - ログSpreadsheet初期化
+- `addLogEntry()` - ログエントリー追加
+- `updateLogEntry()` - ログエントリー更新
+- `getLogEntry()` - 追跡IDでログ取得
+- `getExpiredLogEntries()` - 期限切れログ取得
+
+#### **Triggers.gs** - トリガー管理
+- `setupAllTriggers()` - 全トリガー一括作成
+- `deleteAllTriggers()` - 全トリガー削除
+- `listAllTriggers()` - トリガー一覧表示
+
+#### **bootstrap.gs** - 初期セットアップ
+- `bootstrapSecureLocker()` - フォルダ作成・HMAC生成
+- `createFolderInSharedDrive_()` - 共有ドライブにフォルダ作成
+
+#### **cryptojs_min.gs** - CryptoJS
+- CryptoJS最小バンドル（529行）
+- 含まれるモジュール: core, enc-base64, sha256, hmac-sha256, pbkdf2, cipher-core, mode-cbc, pad-pkcs7, aes
 
 ---
 
