@@ -1,0 +1,81 @@
+// =============================
+<div class="bar"><div id="prog"></div></div>
+<div id="out" style="margin-top:10px" class="hint"></div>
+</div>
+
+
+<script>
+const params = new URLSearchParams(location.search);
+const fileId = params.get('id');
+const token = params.get('token');
+function setProg(p){ document.getElementById('prog').style.width = Math.max(0, Math.min(100, p)) + '%'; }
+function b64ToBytes(b64){
+const bin = atob(b64);
+const bytes = new Uint8Array(bin.length);
+for (let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+return bytes;
+}
+function saveBlob(bytes, name, mime){
+const blob = new Blob([bytes], {type: mime || 'application/octet-stream'});
+const a = document.createElement('a');
+a.href = URL.createObjectURL(blob);
+a.download = name || 'decrypted';
+a.click();
+URL.revokeObjectURL(a.href);
+}
+async function deriveKey(password, salt, iter){
+const enc = new TextEncoder();
+const baseKey = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+return crypto.subtle.deriveKey(
+{ name: 'PBKDF2', salt, iterations: iter, hash: 'SHA-256' },
+baseKey,
+{ name: 'AES-GCM', length: 256 },
+false,
+['decrypt']
+);
+}
+
+
+const metaDiv = document.getElementById('meta');
+const out = document.getElementById('out');
+const decBtn = document.getElementById('dec');
+
+
+let pkg = null; // {header, ciphertextB64}
+(async () => {
+try{
+google.script.run.withSuccessHandler(res => {
+if (!res || !res.ok) { metaDiv.innerHTML = '<span class="err">パッケージの取得に失敗しました。</span>'; return; }
+pkg = res;
+const h = res.header;
+metaDiv.innerHTML = `暗号: <b>${h.alg}</b> / KDF: ${h.kdf} (iter=${h.kdfIter}) / 生成: ${new Date(h.createdAt).toLocaleString()}<br>ファイル: <b>${h.originalName}</b> (${(h.sizeBytes/1024/1024).toFixed(2)} MB)`;
+}).getPackage(fileId, token);
+}catch(err){ metaDiv.textContent = '読み込みエラー: ' + String(err); }
+})();
+
+
+decBtn.addEventListener('click', async ()=>{
+if (!pkg) { out.innerHTML = '<span class="err">準備中です。少し待ってから再試行してください。</span>'; return; }
+const pw = document.getElementById('pw').value;
+if (!pw) { out.innerHTML = '<span class="err">パスワードを入力してください。</span>'; return; }
+try{
+setProg(10);
+const salt = b64ToBytes(pkg.header.kdfSaltB64);
+const iv = b64ToBytes(pkg.header.ivB64);
+const key = await deriveKey(pw, salt, pkg.header.kdfIter);
+setProg(35);
+const ctBytes = b64ToBytes(pkg.ciphertextB64);
+const ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ctBytes);
+setProg(85);
+saveBlob(new Uint8Array(ptBuf), pkg.header.originalName, pkg.header.mimeType);
+setProg(100);
+out.innerHTML = '<span class="ok">復号に成功しました。ダウンロードを開始します。</span>';
+}catch(err){
+console.error(err);
+setProg(0);
+out.innerHTML = '<span class="err">復号に失敗しました。パスワードが正しいか確認してください。</span>';
+}
+});
+</script>
+</body>
+</html>
