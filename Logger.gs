@@ -74,7 +74,8 @@ function initLogSpreadsheet() {
  */
 function addLogEntry(entry) {
   try {
-    var ssId = SYS.LOG_SPREADSHEET_ID;
+    // PropertiesServiceから直接取得（SYSオブジェクトは初期化時の値のため更新されない）
+    var ssId = PropertiesService.getScriptProperties().getProperty('LOG_SPREADSHEET_ID');
     if (!ssId) {
       ssId = initLogSpreadsheet();
     }
@@ -118,7 +119,7 @@ function addLogEntry(entry) {
  */
 function updateLogEntry(trackingId, updates) {
   try {
-    var ssId = SYS.LOG_SPREADSHEET_ID;
+    var ssId = PropertiesService.getScriptProperties().getProperty('LOG_SPREADSHEET_ID');
     if (!ssId) {
       Logger.log('ログSpreadsheetが初期化されていません');
       return;
@@ -162,7 +163,7 @@ function updateLogEntry(trackingId, updates) {
  */
 function getLogEntry(trackingId) {
   try {
-    var ssId = SYS.LOG_SPREADSHEET_ID;
+    var ssId = PropertiesService.getScriptProperties().getProperty('LOG_SPREADSHEET_ID');
     if (!ssId) {
       return null;
     }
@@ -212,7 +213,7 @@ function getLogEntry(trackingId) {
  */
 function getExpiredLogEntries() {
   try {
-    var ssId = SYS.LOG_SPREADSHEET_ID;
+    var ssId = PropertiesService.getScriptProperties().getProperty('LOG_SPREADSHEET_ID');
     if (!ssId) {
       return [];
     }

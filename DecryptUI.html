@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NHP SecureLocker - 復号ツール</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Noto Sans JP', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 600px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .header .subtitle {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .step {
+      margin-bottom: 24px;
+    }
+
+    .step-label {
+      display: block;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+      font-size: 15px;
+    }
+
+    .file-input-wrapper {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+    }
+
+    .file-input-wrapper input[type="file"] {
+      position: absolute;
+      left: -9999px;
+    }
+
+    .file-input-label {
+      display: block;
+      padding: 20px;
+      background: #f8f9fa;
+      border: 2px dashed #cbd5e0;
+      border-radius: 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .file-input-label:hover {
+      background: #e9ecef;
+      border-color: #667eea;
+    }
+
+    .file-input-label.has-file {
+      background: #e6f3ff;
+      border-color: #667eea;
+      border-style: solid;
+    }
+
+    .file-name {
+      font-weight: 600;
+      color: #667eea;
+      margin-top: 8px;
+    }
+
+    input[type="password"] {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 16px;
+      font-family: 'Courier New', monospace;
+      transition: border-color 0.3s;
+    }
+
+    input[type="password"]:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      background: #cbd5e0;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .message {
+      margin-top: 16px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .message.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .message.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .progress {
+      width: 100%;
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      margin-top: 12px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      width: 0;
+      transition: width 0.3s;
+    }
+
+    .file-info {
+      margin-top: 12px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #666;
+      display: none;
+    }
+
+    .file-info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .file-info-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #999;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔐 NHP SecureLocker</h1>
+      <p class="subtitle">暗号化ファイル復号ツール</p>
+    </div>
+
+    <div class="step">
+      <label class="step-label">1. 暗号化ファイル (.yenc) を選択</label>
+      <div class="file-input-wrapper">
+        <input type="file" id="fileInput" accept=".yenc">
+        <label for="fileInput" class="file-input-label" id="fileLabel">
+          <div>📁 ファイルをクリックして選択</div>
+          <div class="file-name" id="fileName"></div>
+        </label>
+      </div>
+      <div class="file-info" id="fileInfo"></div>
+    </div>
+
+    <div class="step">
+      <label class="step-label">2. パスワードを入力（24桁）</label>
+      <input type="password" id="passwordInput" placeholder="例: Abc123!@#XyzAbcDef1234567" maxlength="24">
+    </div>
+
+    <div class="step">
+      <button class="btn" id="decryptBtn" disabled>🔓 復号してダウンロード</button>
+      <div class="progress" id="progress">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div id="message"></div>
+    </div>
+
+    <div class="footer">
+      NHP SecureLocker v1.0 | © 2025 NHP
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <script>
+    let selectedFile = null;
+    let packageData = null;
+
+    const fileInput = document.getElementById('fileInput');
+    const fileLabel = document.getElementById('fileLabel');
+    const fileName = document.getElementById('fileName');
+    const fileInfo = document.getElementById('fileInfo');
+    const passwordInput = document.getElementById('passwordInput');
+    const decryptBtn = document.getElementById('decryptBtn');
+    const progress = document.getElementById('progress');
+    const progressBar = document.getElementById('progressBar');
+    const messageDiv = document.getElementById('message');
+
+    // ファイル選択
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      selectedFile = file;
+      fileName.textContent = file.name;
+      fileLabel.classList.add('has-file');
+
+      try {
+        // ファイルを読み込み
+        const content = await readFileAsText(file);
+
+        // パッケージをパース
+        const parts = content.split('\n---\n');
+        if (parts.length !== 2) {
+          throw new Error('無効なファイル形式です');
+        }
+
+        const header = JSON.parse(parts[0]);
+        packageData = {
+          header: header,
+          ciphertextB64: parts[1]
+        };
+
+        // ファイル情報を表示
+        fileInfo.style.display = 'block';
+        fileInfo.innerHTML = `
+          <div class="file-info-row"><span>元のファイル名:</span><span><strong>${header.originalName}</strong></span></div>
+          <div class="file-info-row"><span>ファイルサイズ:</span><span>${(header.sizeBytes / 1024).toFixed(1)} KB</span></div>
+          <div class="file-info-row"><span>暗号化日時:</span><span>${new Date(header.createdAt).toLocaleString('ja-JP')}</span></div>
+          <div class="file-info-row"><span>暗号化方式:</span><span>${header.algorithm}</span></div>
+        `;
+
+        checkReady();
+        showMessage('ファイルを読み込みました', 'success');
+
+      } catch (err) {
+        showMessage('ファイルの読み込みに失敗しました: ' + err.message, 'error');
+        packageData = null;
+      }
+    });
+
+    // パスワード入力
+    passwordInput.addEventListener('input', checkReady);
+
+    // 復号ボタン
+    decryptBtn.addEventListener('click', async () => {
+      const password = passwordInput.value.trim();
+
+      if (!password) {
+        showMessage('パスワードを入力してください', 'error');
+        return;
+      }
+
+      if (!packageData) {
+        showMessage('ファイルを選択してください', 'error');
+        return;
+      }
+
+      try {
+        decryptBtn.disabled = true;
+        progress.style.display = 'block';
+        setProgress(10);
+        showMessage('復号処理を開始しています...', 'info');
+
+        // 復号処理
+        await sleep(100);
+        const decryptedBlob = await decryptFile(packageData, password);
+
+        setProgress(100);
+        showMessage('復号に成功しました！ダウンロードを開始します...', 'success');
+
+        // ダウンロード
+        await sleep(500);
+        downloadBlob(decryptedBlob, packageData.header.originalName);
+
+        showMessage('✓ ダウンロード完了', 'success');
+
+      } catch (err) {
+        console.error(err);
+        showMessage('復号に失敗しました: ' + err.message, 'error');
+      } finally {
+        decryptBtn.disabled = false;
+        setTimeout(() => {
+          progress.style.display = 'none';
+          setProgress(0);
+        }, 2000);
+      }
+    });
+
+    // 復号処理
+    async function decryptFile(pkg, password) {
+      const header = pkg.header;
+
+      setProgress(20);
+
+      // Base64デコード
+      const salt = CryptoJS.enc.Base64.parse(header.kdfSaltB64);
+      const iv = CryptoJS.enc.Base64.parse(header.ivB64);
+      const ciphertext = CryptoJS.enc.Base64.parse(pkg.ciphertextB64);
+      const expectedMac = CryptoJS.enc.Base64.parse(header.macB64);
+
+      setProgress(30);
+
+      // 鍵の導出（PBKDF2）
+      const key = CryptoJS.PBKDF2(password, salt, {
+        keySize: 256 / 32,
+        iterations: header.kdfIter,
+        hasher: CryptoJS.algo.SHA256
+      });
+
+      setProgress(50);
+
+      // 復号（AES-256-CBC）
+      const decrypted = CryptoJS.AES.decrypt(
+        { ciphertext: ciphertext },
+        key,
+        {
+          iv: iv,
+          mode: CryptoJS.mode.CBC,
+          padding: CryptoJS.pad.Pkcs7
+        }
+      );
+
+      setProgress(80);
+
+      // WordArrayをUint8Arrayに変換
+      const words = decrypted.words;
+      const sigBytes = decrypted.sigBytes;
+      const bytes = new Uint8Array(sigBytes);
+
+      for (let i = 0; i < sigBytes; i++) {
+        bytes[i] = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+      }
+
+      setProgress(95);
+
+      // Blobを作成
+      const blob = new Blob([bytes], { type: header.mimeType || 'application/octet-stream' });
+
+      return blob;
+    }
+
+    // ヘルパー関数
+    function readFileAsText(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsText(file);
+      });
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function checkReady() {
+      const hasFile = packageData !== null;
+      const hasPassword = passwordInput.value.trim().length > 0;
+      decryptBtn.disabled = !(hasFile && hasPassword);
+    }
+
+    function setProgress(percent) {
+      progressBar.style.width = percent + '%';
+    }
+
+    function showMessage(text, type) {
+      messageDiv.className = 'message ' + type;
+      messageDiv.textContent = text;
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+  </script>
+</body>
+</html>

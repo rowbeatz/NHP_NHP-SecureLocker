@@ -139,7 +139,7 @@ function deleteFile(fileId) {
  */
 function updateLogEntryByRow(rowIndex, updates) {
   try {
-    var ssId = SYS.LOG_SPREADSHEET_ID;
+    var ssId = PropertiesService.getScriptProperties().getProperty('LOG_SPREADSHEET_ID');
     if (!ssId) {
       return;
     }

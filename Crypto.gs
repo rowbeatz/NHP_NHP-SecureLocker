@@ -53,6 +53,60 @@ function generateTrackingId() {
 }
 
 /**
+ * 安全なランダムバイト列を生成（GAS環境用）
+ * CryptoJS.lib.WordArray.random が利用できないため独自実装
+ * @param {number} numBytes - 生成するバイト数
+ * @return {WordArray} CryptoJS WordArray
+ */
+function generateSecureRandom(numBytes) {
+  // GAS UUIDとHMACを使って安全な乱数を生成
+  var seed = Utilities.getUuid() + Utilities.getUuid() + Utilities.getUuid();
+
+  // SECRET_HMACが設定されている場合はそれを使用、なければUUIDを使用
+  var hmacKeyStr = SYS.SECRET_HMAC || Utilities.getUuid();
+  var hmacKey = CryptoJS.enc.Base64.parse(hmacKeyStr);
+
+  // HMAC-SHA256で乱数生成（256bit = 32bytes）
+  var hash = CryptoJS.HmacSHA256(seed, hmacKey);
+
+  // 必要なバイト数だけ取得（32バイト以下の場合）
+  if (numBytes <= 32) {
+    // WordArrayから必要なバイト数だけ切り出し
+    var words = [];
+    var fullWords = Math.floor(numBytes / 4);
+    var remainingBytes = numBytes % 4;
+
+    for (var i = 0; i < fullWords; i++) {
+      words.push(hash.words[i]);
+    }
+
+    if (remainingBytes > 0) {
+      words.push(hash.words[fullWords]);
+    }
+
+    return CryptoJS.lib.WordArray.create(words, numBytes);
+  } else {
+    // 32バイト以上必要な場合は複数回生成
+    var result = CryptoJS.lib.WordArray.create();
+    var generated = 0;
+    var counter = 0;
+
+    while (generated < numBytes) {
+      var counterStr = counter.toString();
+      var newSeed = seed + counterStr;
+      var newHash = CryptoJS.HmacSHA256(newSeed, hmacKey);
+      result = result.concat(newHash);
+      generated += 32;
+      counter++;
+    }
+
+    // 必要なバイト数だけに切り詰め
+    result.sigBytes = numBytes;
+    return result;
+  }
+}
+
+/**
  * ファイルを暗号化
  * @param {Blob} blob - 暗号化するファイル（GAS Blob）
  * @param {string} password - 24桁パスワード
@@ -66,8 +120,8 @@ function encryptFile(blob, password, originalName) {
     var fileData = Utilities.newBlob(fileBytes).getDataAsString('ISO-8859-1');
 
     // Salt と IV を生成（各16バイト）
-    var salt = CryptoJS.lib.WordArray.random(16);
-    var iv = CryptoJS.lib.WordArray.random(16);
+    var salt = generateSecureRandom(16);
+    var iv = generateSecureRandom(16);
 
     // PBKDF2でパスワードから鍵を導出
     var key = CryptoJS.PBKDF2(password, salt, {
