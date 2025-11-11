@@ -234,7 +234,15 @@ function decryptFile(packageContent, password) {
 
     // WordArrayをバイナリに変換
     var plaintextStr = CryptoJS.enc.Latin1.stringify(decrypted);
-    var blob = Utilities.newBlob(plaintextStr, header.mimeType, header.originalName);
+
+    // Latin1文字列からバイト配列を復元（各文字は1バイトを表す）
+    var bytes = [];
+    for (var i = 0; i < plaintextStr.length; i++) {
+      bytes.push(plaintextStr.charCodeAt(i) & 0xff);
+    }
+
+    // バイト配列からBlobを作成
+    var blob = Utilities.newBlob(bytes, header.mimeType, header.originalName);
 
     return blob;
 
