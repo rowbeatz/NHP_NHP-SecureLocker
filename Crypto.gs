@@ -71,25 +71,14 @@ function generateSecureRandom(numBytes) {
 
   // 必要なバイト数だけ取得（32バイト以下の場合）
   if (numBytes <= 32) {
-    // WordArrayから必要なバイト数だけ切り出し
-    var words = [];
-    var fullWords = Math.floor(numBytes / 4);
-    var remainingBytes = numBytes % 4;
-
-    for (var i = 0; i < fullWords; i++) {
-      words.push(hash.words[i]);
-    }
-
-    if (remainingBytes > 0) {
-      words.push(hash.words[fullWords]);
-    }
-
-    return CryptoJS.lib.WordArray.create(words, numBytes);
+    // sigBytesを直接設定して必要なバイト数だけ使用
+    hash.sigBytes = numBytes;
+    return hash;
   } else {
-    // 32バイト以上必要な場合は複数回生成
-    var result = CryptoJS.lib.WordArray.create();
-    var generated = 0;
-    var counter = 0;
+    // 32バイト以上必要な場合は複数回生成して連結
+    var result = hash;
+    var generated = 32;
+    var counter = 1;
 
     while (generated < numBytes) {
       var counterStr = counter.toString();
