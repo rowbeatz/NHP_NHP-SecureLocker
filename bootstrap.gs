@@ -2,23 +2,34 @@
 function bootstrapSecureLocker() {
   // 共有ドライブID 必須チェック
   var props = PropertiesService.getScriptProperties();
-  var sharedDriveId = props.getProperty('SHARED_DRIVE_ID');
+  var sharedDriveId = props.getProperty('SHARED_DRIVE_ID') || SYS.SHARED_DRIVE_ID;
 
   if (!sharedDriveId) {
     var errorMsg =
       '【セットアップエラー】\n\n' +
       'SHARED_DRIVE_ID が設定されていません。\n\n' +
-      '以下の手順で設定してください：\n' +
+      '方法1: Script Properties に設定（推奨）\n' +
       '1. GASエディタで「プロジェクトの設定」→「スクリプト プロパティ」を開く\n' +
       '2. 「スクリプト プロパティを追加」をクリック\n' +
       '3. プロパティ: SHARED_DRIVE_ID\n' +
       '4. 値: 共有ドライブのID（例: 0APbz-T9cPss3Uk9PVA）\n\n' +
+      '方法2: Config.gs のデフォルト値を設定\n' +
+      '1. Config.gs を開く\n' +
+      '2. SHARED_DRIVE_ID の行を編集:\n' +
+      '   SHARED_DRIVE_ID: props.SHARED_DRIVE_ID || \'あなたの共有ドライブID\',\n\n' +
       '共有ドライブIDの取得方法：\n' +
       '- Google Driveで共有ドライブを開く\n' +
       '- URLから取得: https://drive.google.com/drive/folders/<このID部分>\n\n' +
       '設定後、再度 bootstrapSecureLocker() を実行してください。';
 
     throw new Error(errorMsg);
+  }
+
+  // Script Properties に保存されていない場合は保存
+  if (!props.getProperty('SHARED_DRIVE_ID')) {
+    Logger.log('Config.gs のデフォルト値を使用: ' + sharedDriveId);
+    Logger.log('Script Properties に保存します...');
+    props.setProperty('SHARED_DRIVE_ID', sharedDriveId);
   }
 
   Logger.log('共有ドライブID確認: ' + sharedDriveId);
