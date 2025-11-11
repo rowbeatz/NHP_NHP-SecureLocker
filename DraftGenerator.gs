@@ -75,7 +75,7 @@ function createRawMessage(params) {
   if (params.cc) lines.push('Cc: ' + params.cc);
   if (params.bcc) lines.push('Bcc: ' + params.bcc);
   lines.push('Subject: ' + params.subject);
-  lines.push('Content-Type: text/plain; charset=UTF-8');
+  lines.push('Content-Type: text/html; charset=UTF-8');
   lines.push('Content-Transfer-Encoding: base64');
 
   // スレッド情報（In-Reply-To, References）
