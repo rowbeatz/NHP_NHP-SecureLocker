@@ -134,8 +134,9 @@ function encryptFile(blob, password, originalName) {
     var ciphertext = encrypted.ciphertext;
 
     // HMACでMACを計算（Encrypt-then-MAC）
+    // 注意: concat()は破壊的操作なのでclone()を使用
     var hmacKey = CryptoJS.enc.Base64.parse(SYS.SECRET_HMAC);
-    var dataToMac = salt.concat(iv).concat(ciphertext);
+    var dataToMac = salt.clone().concat(iv).concat(ciphertext);
     var mac = CryptoJS.HmacSHA256(dataToMac, hmacKey);
 
     // ヘッダー情報
@@ -200,8 +201,9 @@ function decryptFile(packageContent, password) {
     var expectedMac = CryptoJS.enc.Base64.parse(header.macB64);
 
     // MAC検証
+    // 注意: concat()は破壊的操作なのでclone()を使用
     var hmacKey = CryptoJS.enc.Base64.parse(SYS.SECRET_HMAC);
-    var dataToMac = salt.concat(iv).concat(ciphertext);
+    var dataToMac = salt.clone().concat(iv).concat(ciphertext);
     var computedMac = CryptoJS.HmacSHA256(dataToMac, hmacKey);
 
     if (computedMac.toString() !== expectedMac.toString()) {
