@@ -27,6 +27,15 @@ var SYS = (function() {
     // ログSpreadsheet ID（初回実行時に自動生成）
     LOG_SPREADSHEET_ID: props.LOG_SPREADSHEET_ID || '',
 
+    // WebApp URL（デプロイ後に自動設定）
+    WEBAPP_URL: props.WEBAPP_URL || '',
+
+    // ========== WebApp設定 ==========
+    WEBAPP: {
+      PASSWORD_EXPIRY_MINUTES: 10,  // パスワード有効期限（分）
+      TEMP_FILE_CLEANUP_MINUTES: 10  // 一時ファイル削除（分）
+    },
+
     // ========== 暗号化設定 ==========
     CRYPTO: {
       ALGORITHM: 'AES-256-CBC',

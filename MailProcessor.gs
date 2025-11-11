@@ -320,31 +320,57 @@ function extractDriveLinks(body) {
  * 本文を加工（リンク差し替え + 追跡ID追加）
  */
 function modifyBodyContent(body, originalLinks, processedFiles, trackingId) {
+  // 元の本文をそのまま保持
   var modified = body;
 
-  // Driveリンクを暗号化リンクに差し替え
-  for (var i = 0; i < originalLinks.length; i++) {
-    var original = originalLinks[i];
-    var processed = processedFiles[i];  // 順序が対応していると仮定
+  // WebApp URLを生成
+  var webappUrl = getWebAppUrl();
+  var downloadUrl = webappUrl + '?id=' + trackingId;
 
-    if (processed && processed.driveLink) {
-      modified = modified.replace(original.url, processed.driveLink);
-    }
-  }
-
-  // 添付ファイルの情報を本文に追加
+  // ファイル一覧を作成
+  var fileList = '';
   if (processedFiles.length > 0) {
-    modified += '\n\n--- 暗号化ファイル ---\n';
+    fileList = '\n\n━━━━━━━━━━━━━━━━━━━━\n';
+    fileList += '📎 ダウンロード可能なファイル:\n';
     for (var i = 0; i < processedFiles.length; i++) {
       var file = processedFiles[i];
-      modified += '・' + file.originalName + ': ' + file.driveLink + '\n';
+      var sizeKB = (file.size / 1024).toFixed(1);
+      fileList += '  • ' + file.originalName + ' (' + sizeKB + ' KB)\n';
     }
+    fileList += '━━━━━━━━━━━━━━━━━━━━\n';
   }
 
-  // 追跡IDを追加
-  modified += '\n\n[#' + trackingId + ']';
+  // ダウンロードリンクを追加
+  modified += fileList;
+  modified += '\n🔗 ダウンロードページ:\n';
+  modified += downloadUrl + '\n\n';
+  modified += '※ダウンロードにはメールアドレス認証とパスワードが必要です\n';
+  modified += '※パスワードは別途メールで送信されます\n';
+  modified += '※有効期限: ' + SYS.LIFECYCLE.VALIDITY_DAYS + '日\n';
+
+  // 追跡IDを追加（パスワード送信トリガー用）
+  modified += '\n[#' + trackingId + ']';
 
   return modified;
+}
+
+/**
+ * WebApp URLを取得
+ */
+function getWebAppUrl() {
+  var props = PropertiesService.getScriptProperties();
+  var url = props.getProperty('WEBAPP_URL');
+
+  if (!url) {
+    // WebApp URLが未設定の場合、スクリプトIDから生成
+    var scriptId = ScriptApp.getScriptId();
+    url = 'https://script.google.com/macros/s/' + scriptId + '/exec';
+
+    Logger.log('WebApp URL未設定。デフォルトURL: ' + url);
+    Logger.log('デプロイ後、正しいURLをScript Propertiesに設定してください');
+  }
+
+  return url;
 }
 
 /**
