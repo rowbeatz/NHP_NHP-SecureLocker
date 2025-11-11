@@ -232,14 +232,12 @@ function decryptFile(packageContent, password) {
       }
     );
 
-    // WordArrayをバイナリに変換
-    var plaintextStr = CryptoJS.enc.Latin1.stringify(decrypted);
+    // WordArrayをBase64に変換してからバイト配列に復元
+    // （Latin1経由だと文字コードの問題が発生するため、Base64を使用）
+    var base64 = CryptoJS.enc.Base64.stringify(decrypted);
 
-    // Latin1文字列からバイト配列を復元（各文字は1バイトを表す）
-    var bytes = [];
-    for (var i = 0; i < plaintextStr.length; i++) {
-      bytes.push(plaintextStr.charCodeAt(i) & 0xff);
-    }
+    // GASのBase64デコーダーでバイト配列に変換
+    var bytes = Utilities.base64Decode(base64);
 
     // バイト配列からBlobを作成
     var blob = Utilities.newBlob(bytes, header.mimeType, header.originalName);
