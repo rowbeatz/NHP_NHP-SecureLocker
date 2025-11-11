@@ -73,6 +73,7 @@ function generateSecureRandom(numBytes) {
   if (numBytes <= 32) {
     // sigBytesを直接設定して必要なバイト数だけ使用
     hash.sigBytes = numBytes;
+    hash.clamp(); // words配列を適切な長さに切り詰める
     return hash;
   } else {
     // 32バイト以上必要な場合は複数回生成して連結
@@ -91,6 +92,7 @@ function generateSecureRandom(numBytes) {
 
     // 必要なバイト数だけに切り詰め
     result.sigBytes = numBytes;
+    result.clamp(); // words配列を適切な長さに切り詰める
     return result;
   }
 }
