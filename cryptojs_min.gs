@@ -402,6 +402,15 @@ CryptoJS.lib.Cipher || (function () {
     blockSize: 128/32
   });
 
+  var CipherParams = C_lib.CipherParams = Base.extend({
+    init: function (cipherParams) {
+      this.mixIn(cipherParams);
+    },
+    toString: function (formatter) {
+      return (formatter || this.formatter).stringify(this);
+    }
+  });
+
   var C_format = C.format = {};
   var OpenSSLFormatter = C_format.OpenSSL = {
     stringify: function (cipherParams) {
