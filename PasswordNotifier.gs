@@ -74,9 +74,10 @@ function processSentMailsForPassword() {
         // パスワード通知メールを送信
         sendPasswordNotification(recipients, logEntry.passwords, logEntry.files);
 
-        // ログを更新
+        // ログを更新（ホワイトリストも保存）
         updateLogEntry(trackingId, {
           recipients: recipients,
+          whitelist: recipients,  // ホワイトリストとして保存
           sentMsgId: message.getId(),
           status: 'PASSWORD_SENT'
         });

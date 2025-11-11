@@ -39,6 +39,7 @@ function initLogSpreadsheet() {
     'DraftId',
     'SentMsgId',
     'Recipients',
+    'Whitelist',
     'ExpiryAt',
     'Status',
     'ErrorMessage'
@@ -99,6 +100,7 @@ function addLogEntry(entry) {
       entry.draftId || '',
       entry.sentMsgId || '',
       JSON.stringify(entry.recipients || []),
+      JSON.stringify(entry.whitelist || []),
       entry.expiryAt || '',
       entry.status || 'PROCESSING',
       entry.errorMessage || ''
@@ -192,9 +194,10 @@ function getLogEntry(trackingId) {
           draftId: data[i][8],
           sentMsgId: data[i][9],
           recipients: JSON.parse(data[i][10] || '[]'),
-          expiryAt: data[i][11],
-          status: data[i][12],
-          errorMessage: data[i][13]
+          whitelist: JSON.parse(data[i][11] || '[]'),
+          expiryAt: data[i][12],
+          status: data[i][13],
+          errorMessage: data[i][14]
         };
       }
     }
@@ -230,8 +233,8 @@ function getExpiredLogEntries() {
     var expired = [];
 
     for (var i = 1; i < data.length; i++) {
-      var expiryAt = data[i][11];
-      var status = data[i][12];
+      var expiryAt = data[i][12];
+      var status = data[i][13];
 
       if (expiryAt && status !== 'DELETED' && status !== 'EXPIRED') {
         var expiryDate = new Date(expiryAt);
