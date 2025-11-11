@@ -308,3 +308,54 @@ function testTrackingIdGeneration() {
   }
   Logger.log('=== テスト完了 ===');
 }
+
+/**
+ * CryptoJS APIのデバッグテスト
+ */
+function debugCryptoJSAPI() {
+  Logger.log('=== CryptoJS API デバッグ ===');
+
+  try {
+    Logger.log('1. CryptoJS 存在チェック: ' + (typeof CryptoJS !== 'undefined'));
+    Logger.log('2. CryptoJS.lib 存在チェック: ' + (typeof CryptoJS.lib !== 'undefined'));
+    Logger.log('3. CryptoJS.algo 存在チェック: ' + (typeof CryptoJS.algo !== 'undefined'));
+    Logger.log('4. CryptoJS.mode 存在チェック: ' + (typeof CryptoJS.mode !== 'undefined'));
+    Logger.log('5. CryptoJS.pad 存在チェック: ' + (typeof CryptoJS.pad !== 'undefined'));
+
+    Logger.log('\n--- generateSecureRandom テスト ---');
+    var salt = generateSecureRandom(16);
+    Logger.log('6. salt 生成成功: ' + (typeof salt !== 'undefined'));
+    Logger.log('   salt.sigBytes: ' + salt.sigBytes);
+
+    Logger.log('\n--- PBKDF2 テスト ---');
+    var password = 'test1234567890abcdefghij';
+    var key = CryptoJS.PBKDF2(password, salt, {
+      keySize: 256/32,
+      iterations: 100
+    });
+    Logger.log('7. PBKDF2 成功: ' + (typeof key !== 'undefined'));
+
+    Logger.log('\n--- Latin1 parse テスト ---');
+    var testData = 'Hello World';
+    var parsed = CryptoJS.enc.Latin1.parse(testData);
+    Logger.log('8. Latin1.parse 成功: ' + (typeof parsed !== 'undefined'));
+
+    Logger.log('\n--- IV 生成テスト ---');
+    var iv = generateSecureRandom(16);
+    Logger.log('9. IV 生成成功: ' + (typeof iv !== 'undefined'));
+
+    Logger.log('\n--- AES暗号化テスト ---');
+    var encrypted = CryptoJS.AES.encrypt(parsed, key, {
+      iv: iv,
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7
+    });
+    Logger.log('10. AES暗号化成功: ' + (typeof encrypted !== 'undefined'));
+
+    Logger.log('\n=== すべてのテスト成功 ===');
+
+  } catch (e) {
+    Logger.log('エラー発生: ' + e.message);
+    Logger.log('スタックトレース: ' + e.stack);
+  }
+}
