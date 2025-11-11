@@ -361,3 +361,82 @@ function getRecentLogs(limit) {
     return [];
   }
 }
+function checkLogSpreadsheet() {
+  var props = PropertiesService.getScriptProperties();
+  var ssId = props.getProperty('LOG_SPREADSHEET_ID');
+  
+  if (!ssId) {
+    Logger.log('ログスプレッドシートは未作成です。');
+    Logger.log('→ initLogSpreadsheet() を実行してください');
+    return;
+  }
+  
+  var ss = SpreadsheetApp.openById(ssId);
+  var sheet = ss.getSheetByName('Logs');
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  
+  Logger.log('現在の列数: ' + headers.length);
+  Logger.log('現在の列名: ' + headers.join(', '));
+  
+  // Whitelist列があるかチェック
+  var hasWhitelist = false;
+  for (var i = 0; i < headers.length; i++) {
+    if (headers[i] === 'Whitelist') {
+      hasWhitelist = true;
+      break;
+    }
+  }
+  
+  if (hasWhitelist) {
+    Logger.log('✓ Whitelist列は既に存在します（更新不要）');
+  } else {
+    Logger.log('✗ Whitelist列が存在しません（更新が必要）');
+    Logger.log('→ updateLogSpreadsheetColumns() を実行してください');
+  }
+  
+  Logger.log('\nスプレッドシートURL: ' + ss.getUrl());
+}
+function updateLogSpreadsheetColumns() {
+  var props = PropertiesService.getScriptProperties();
+  var ssId = props.getProperty('LOG_SPREADSHEET_ID');
+  
+  if (!ssId) {
+    Logger.log('エラー: ログスプレッドシートが見つかりません');
+    return;
+  }
+  
+  var ss = SpreadsheetApp.openById(ssId);
+  var sheet = ss.getSheetByName('Logs');
+  
+  // Recipients列の位置を確認（11列目のはず）
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var recipientsIndex = -1;
+  
+  for (var i = 0; i < headers.length; i++) {
+    if (headers[i] === 'Recipients') {
+      recipientsIndex = i + 1;  // 1-indexed
+      break;
+    }
+  }
+  
+  if (recipientsIndex === -1) {
+    Logger.log('エラー: Recipients列が見つかりません');
+    return;
+  }
+  
+  Logger.log('Recipients列の位置: ' + recipientsIndex + '列目');
+  
+  // Recipients列の次に新しい列を挿入
+  sheet.insertColumnAfter(recipientsIndex);
+  
+  // 新しい列のヘッダーを設定
+  sheet.getRange(1, recipientsIndex + 1)
+    .setValue('Whitelist')
+    .setFontWeight('bold')
+    .setBackground('#4285F4')
+    .setFontColor('#FFFFFF');
+  
+  Logger.log('✓ Whitelist列を追加しました（' + (recipientsIndex + 1) + '列目）');
+  Logger.log('✓ 更新完了');
+  Logger.log('\nスプレッドシートURL: ' + ss.getUrl());
+}
