@@ -6,6 +6,11 @@
         "userSymbol": "Drive",
         "serviceId": "drive",
         "version": "v2"
+      },
+      {
+        "userSymbol": "Gmail",
+        "serviceId": "gmail",
+        "version": "v1"
       }
     ]
   },
@@ -13,6 +18,7 @@
   "oauthScopes": [
     "https://www.googleapis.com/auth/script.external_request",
     "https://www.googleapis.com/auth/script.send_mail",
+    "https://www.googleapis.com/auth/script.scriptapp",
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/drive.readonly",
