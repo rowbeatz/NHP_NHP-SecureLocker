@@ -32,7 +32,7 @@ var SYS = (function() {
       ALGORITHM: 'AES-256-CBC',
       KEY_SIZE: 256,
       BLOCK_SIZE: 128,
-      ITERATIONS: 100000, // PBKDF2 iterations
+      ITERATIONS: 10000, // PBKDF2 iterations (GAS環境に最適化、NIST推奨値)
       PASSWORD_LENGTH: 24,
       PASSWORD_CHARSET: {
         UPPER: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
