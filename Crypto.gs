@@ -114,6 +114,10 @@ function encryptFile(blob, password, originalName) {
     var salt = generateSecureRandom(16);
     var iv = generateSecureRandom(16);
 
+    // Base64エンコード用にクローンを保存（暗号化処理で破壊される可能性があるため）
+    var saltForHeader = salt.clone();
+    var ivForHeader = iv.clone();
+
     // PBKDF2でパスワードから鍵を導出
     var key = CryptoJS.PBKDF2(password, salt, {
       keySize: 256/32,  // 256 bits = 8 words
@@ -145,8 +149,8 @@ function encryptFile(blob, password, originalName) {
       algorithm: 'AES-256-CBC',
       kdf: 'PBKDF2',
       kdfIter: SYS.CRYPTO.ITERATIONS,
-      kdfSaltB64: CryptoJS.enc.Base64.stringify(salt),
-      ivB64: CryptoJS.enc.Base64.stringify(iv),
+      kdfSaltB64: CryptoJS.enc.Base64.stringify(saltForHeader),
+      ivB64: CryptoJS.enc.Base64.stringify(ivForHeader),
       macB64: CryptoJS.enc.Base64.stringify(mac),
       originalName: originalName,
       mimeType: blob.getContentType(),
