@@ -1,16 +1,17 @@
 /**
- * PasswordNotifier.gs - パスワード通知
- * 送信済みメールから宛先を抽出してパスワードを送信
+ * PasswordNotifier.gs - ホワイトリスト登録
+ * 送信済みメールから宛先を抽出してホワイトリストに登録
+ * （パスワードはダウンロードページで発行）
  */
 
 /**
- * メイン処理: 送信済みメールを検出してパスワードを送信
+ * メイン処理: 送信済みメールを検出してホワイトリストに登録
  * トリガーから定期的に実行される
  */
 function processSentMailsForPassword() {
   try {
     var userEmail = Session.getActiveUser().getEmail();
-    Logger.log('=== パスワード送信処理開始: ' + userEmail + ' ===');
+    Logger.log('=== ホワイトリスト登録処理開始: ' + userEmail + ' ===');
 
     // 送信済みメールから追跡ID付きメールを検索
     var pwSentLabel = getOrCreateLabel(SYS.LABELS.PW_SENT);
@@ -71,28 +72,27 @@ function processSentMailsForPassword() {
 
         Logger.log('  宛先: ' + recipients.join(', '));
 
-        // パスワード通知メールを送信
-        sendPasswordNotification(recipients, logEntry.passwords, logEntry.files);
-
-        // ログを更新
+        // ホワイトリストのみ保存（パスワードは送信しない）
+        // パスワードはダウンロードページから発行される
         updateLogEntry(trackingId, {
           recipients: recipients,
+          whitelist: recipients,  // ホワイトリストとして保存
           sentMsgId: message.getId(),
-          status: 'PASSWORD_SENT'
+          status: 'DRAFT_SENT'  // PASSWORD_SENTではなくDRAFT_SENT
         });
 
         // 処理済みラベルを付与
         thread.addLabel(pwSentLabel);
 
         processedCount++;
-        Logger.log('  ✓ パスワード送信完了: ' + trackingId);
+        Logger.log('  ✓ ホワイトリスト登録完了: ' + recipients.join(', '));
       }
     }
 
-    Logger.log('=== パスワード送信完了: ' + processedCount + ' 件 ===');
+    Logger.log('=== ホワイトリスト登録完了: ' + processedCount + ' 件 ===');
 
   } catch (e) {
-    Logger.log('=== パスワード送信エラー: ' + e.message + ' ===');
+    Logger.log('=== ホワイトリスト登録エラー: ' + e.message + ' ===');
     throw e;
   }
 }

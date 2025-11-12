@@ -63,7 +63,7 @@ function processMessage(message, thread) {
   var messageId = message.getId();
   var threadId = thread.getId();
   var subject = message.getSubject();
-  var body = message.getPlainBody();
+  var body = message.getBody();  // HTML本文を取得
   var from = message.getFrom();
 
   Logger.log('From: ' + from);
@@ -320,31 +320,69 @@ function extractDriveLinks(body) {
  * 本文を加工（リンク差し替え + 追跡ID追加）
  */
 function modifyBodyContent(body, originalLinks, processedFiles, trackingId) {
+  // 元の本文をそのまま保持（HTML形式）
   var modified = body;
 
-  // Driveリンクを暗号化リンクに差し替え
-  for (var i = 0; i < originalLinks.length; i++) {
-    var original = originalLinks[i];
-    var processed = processedFiles[i];  // 順序が対応していると仮定
+  // WebApp URLを生成
+  var webappUrl = getWebAppUrl();
+  var downloadUrl = webappUrl + '?id=' + trackingId;
 
-    if (processed && processed.driveLink) {
-      modified = modified.replace(original.url, processed.driveLink);
-    }
-  }
-
-  // 添付ファイルの情報を本文に追加
+  // ファイル一覧を作成（HTML形式）
+  var fileListHtml = '';
   if (processedFiles.length > 0) {
-    modified += '\n\n--- 暗号化ファイル ---\n';
+    fileListHtml = '<div style="border: 2px solid #4285F4; border-radius: 8px; padding: 20px; margin: 20px 0; background: #f8f9fa;">';
+    fileListHtml += '<h3 style="margin: 0 0 15px 0; color: #333;">📎 ダウンロード可能なファイル</h3>';
+    fileListHtml += '<ul style="list-style: none; padding: 0; margin: 0;">';
     for (var i = 0; i < processedFiles.length; i++) {
       var file = processedFiles[i];
-      modified += '・' + file.originalName + ': ' + file.driveLink + '\n';
+      var sizeKB = (file.size / 1024).toFixed(1);
+      fileListHtml += '<li style="padding: 8px 0; border-bottom: 1px solid #e0e0e0;">';
+      fileListHtml += '📄 <strong>' + file.originalName + '</strong> <span style="color: #666;">(' + sizeKB + ' KB)</span>';
+      fileListHtml += '</li>';
     }
+    fileListHtml += '</ul>';
+    fileListHtml += '</div>';
   }
 
-  // 追跡IDを追加
-  modified += '\n\n[#' + trackingId + ']';
+  // ダウンロードリンクを追加（HTML形式）
+  var downloadHtml = '';
+  downloadHtml += '<div style="border: 2px solid #10b981; border-radius: 8px; padding: 20px; margin: 20px 0; background: #ecfdf5;">';
+  downloadHtml += '<h3 style="margin: 0 0 15px 0; color: #065f46;">🔗 ダウンロードページ</h3>';
+  downloadHtml += '<p style="margin: 10px 0;"><a href="' + downloadUrl + '" style="color: #2563eb; font-size: 16px; text-decoration: none; font-weight: bold;">';
+  downloadHtml += 'ファイルをダウンロード →</a></p>';
+  downloadHtml += '<div style="margin-top: 15px; padding: 10px; background: white; border-radius: 4px; font-size: 13px; color: #666;">';
+  downloadHtml += '<p style="margin: 5px 0;">✓ ダウンロードにはメールアドレス認証が必要です</p>';
+  downloadHtml += '<p style="margin: 5px 0;">✓ パスワードはダウンロードページで発行されます</p>';
+  downloadHtml += '<p style="margin: 5px 0;">✓ 有効期限: ' + SYS.LIFECYCLE.VALIDITY_DAYS + '日</p>';
+  downloadHtml += '</div>';
+  downloadHtml += '</div>';
+
+  // 追跡ID（非表示）
+  var trackingHtml = '<div style="display: none;">[#' + trackingId + ']</div>';
+
+  // 元の本文に追加
+  modified += fileListHtml + downloadHtml + trackingHtml;
 
   return modified;
+}
+
+/**
+ * WebApp URLを取得
+ */
+function getWebAppUrl() {
+  var props = PropertiesService.getScriptProperties();
+  var url = props.getProperty('WEBAPP_URL');
+
+  if (!url) {
+    // WebApp URLが未設定の場合、スクリプトIDから生成
+    var scriptId = ScriptApp.getScriptId();
+    url = 'https://script.google.com/macros/s/' + scriptId + '/exec';
+
+    Logger.log('WebApp URL未設定。デフォルトURL: ' + url);
+    Logger.log('デプロイ後、正しいURLをScript Propertiesに設定してください');
+  }
+
+  return url;
 }
 
 /**

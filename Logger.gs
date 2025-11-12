@@ -39,6 +39,7 @@ function initLogSpreadsheet() {
     'DraftId',
     'SentMsgId',
     'Recipients',
+    'Whitelist',
     'ExpiryAt',
     'Status',
     'ErrorMessage'
@@ -99,6 +100,7 @@ function addLogEntry(entry) {
       entry.draftId || '',
       entry.sentMsgId || '',
       JSON.stringify(entry.recipients || []),
+      JSON.stringify(entry.whitelist || []),
       entry.expiryAt || '',
       entry.status || 'PROCESSING',
       entry.errorMessage || ''
@@ -137,12 +139,21 @@ function updateLogEntry(trackingId, updates) {
     // TrackingIDで検索（列2: TrackingID）
     for (var i = 1; i < data.length; i++) {
       if (data[i][1] === trackingId) {
-        // 更新
-        if (updates.draftId) sheet.getRange(i + 1, 9).setValue(updates.draftId);
-        if (updates.sentMsgId) sheet.getRange(i + 1, 10).setValue(updates.sentMsgId);
-        if (updates.recipients) sheet.getRange(i + 1, 11).setValue(JSON.stringify(updates.recipients));
-        if (updates.status) sheet.getRange(i + 1, 13).setValue(updates.status);
-        if (updates.errorMessage) sheet.getRange(i + 1, 14).setValue(updates.errorMessage);
+        // 更新 (列番号は1-indexed)
+        // 9: DraftId, 10: SentMsgId, 11: Recipients, 12: Whitelist, 13: Status, 14: ErrorMessage
+        if (updates.draftId !== undefined) sheet.getRange(i + 1, 9).setValue(updates.draftId);
+        if (updates.sentMsgId !== undefined) sheet.getRange(i + 1, 10).setValue(updates.sentMsgId);
+        if (updates.recipients !== undefined) sheet.getRange(i + 1, 11).setValue(JSON.stringify(updates.recipients));
+        if (updates.whitelist !== undefined) sheet.getRange(i + 1, 12).setValue(JSON.stringify(updates.whitelist));
+        if (updates.status !== undefined) sheet.getRange(i + 1, 14).setValue(updates.status);
+        if (updates.errorMessage !== undefined) sheet.getRange(i + 1, 15).setValue(updates.errorMessage);
+
+        // 追加フィールド: ExpiryAt (13列目)
+        if (updates.expiryAt !== undefined) sheet.getRange(i + 1, 13).setValue(updates.expiryAt);
+
+        // 補足情報をExpiryAt列の後に追加する場合の拡張
+        // passwordRequested, passwordRequestedAt, passwordRequestEmail, downloadedAt, downloadedBy等は
+        // ErrorMessage列を使うか、新しい列を追加する必要があります
 
         Logger.log('ログ更新: ' + trackingId + ' → ' + (updates.status || 'updated'));
         return;
@@ -192,9 +203,10 @@ function getLogEntry(trackingId) {
           draftId: data[i][8],
           sentMsgId: data[i][9],
           recipients: JSON.parse(data[i][10] || '[]'),
-          expiryAt: data[i][11],
-          status: data[i][12],
-          errorMessage: data[i][13]
+          whitelist: JSON.parse(data[i][11] || '[]'),
+          expiryAt: data[i][12],
+          status: data[i][13],
+          errorMessage: data[i][14]
         };
       }
     }
@@ -230,8 +242,8 @@ function getExpiredLogEntries() {
     var expired = [];
 
     for (var i = 1; i < data.length; i++) {
-      var expiryAt = data[i][11];
-      var status = data[i][12];
+      var expiryAt = data[i][12];
+      var status = data[i][13];
 
       if (expiryAt && status !== 'DELETED' && status !== 'EXPIRED') {
         var expiryDate = new Date(expiryAt);
