@@ -66,7 +66,7 @@ function startSecureLocker() {
     Logger.log('システムは正常に起動しました。\n');
     Logger.log('次の手順：');
     Logger.log('1. ' + SYS.TRIGGER_EMAIL + ' 宛にテストメールを送信');
-    Logger.log('2. 5分以内に自動処理が開始されます');
+    Logger.log('2. 1分以内に自動処理が開始されます');
     Logger.log('3. 問題がある場合は diagnoseSecureLocker() を実行\n');
 
     for (var i = 0; i < results.length; i++) {
@@ -316,7 +316,7 @@ function diagnoseSecureLocker() {
     Logger.log('    ✅ 問題なし                       ');
     Logger.log('========================================\n');
     Logger.log('システムは正常です。');
-    Logger.log('メールが処理されない場合は、5分待ってから再確認してください。');
+    Logger.log('メールが処理されない場合は、1分待ってから再確認してください。');
   } else {
     Logger.log('    ⚠️  ' + issues.length + ' 個の問題を検出        ');
     Logger.log('========================================\n');

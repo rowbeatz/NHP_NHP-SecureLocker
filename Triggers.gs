@@ -13,19 +13,19 @@ function setupAllTriggers() {
   // 既存のトリガーを削除
   deleteAllTriggers();
 
-  // 1. メール処理トリガー（5分ごと）
+  // 1. メール処理トリガー（1分ごと）
   ScriptApp.newTrigger('processIncomingMails')
     .timeBased()
-    .everyMinutes(5)
+    .everyMinutes(1)
     .create();
-  Logger.log('✓ メール処理トリガー作成（5分ごと）');
+  Logger.log('✓ メール処理トリガー作成（1分ごと）');
 
-  // 2. パスワード送信トリガー（5分ごと）
+  // 2. ホワイトリスト登録トリガー（1分ごと）
   ScriptApp.newTrigger('processSentMailsForPassword')
     .timeBased()
-    .everyMinutes(5)
+    .everyMinutes(1)
     .create();
-  Logger.log('✓ パスワード送信トリガー作成（5分ごと）');
+  Logger.log('✓ ホワイトリスト登録トリガー作成（1分ごと）');
 
   // 3. 期限切れファイル削除トリガー（毎日午前2時）
   ScriptApp.newTrigger('sweepExpiredFiles')
@@ -91,31 +91,31 @@ function setupMailProcessorTriggerOnly() {
   // 既存の同名トリガーを削除
   deleteTriggersForFunction('processIncomingMails');
 
-  // トリガー作成
+  // トリガー作成（1分ごと）
   ScriptApp.newTrigger('processIncomingMails')
     .timeBased()
-    .everyMinutes(5)
+    .everyMinutes(1)
     .create();
 
   Logger.log('✓ メール処理トリガー作成完了');
 }
 
 /**
- * カスタマイズ版: パスワード送信トリガーのみ作成（テスト用）
+ * カスタマイズ版: ホワイトリスト登録トリガーのみ作成（テスト用）
  */
 function setupPasswordNotifierTriggerOnly() {
-  Logger.log('=== パスワード送信トリガーのみセットアップ ===');
+  Logger.log('=== ホワイトリスト登録トリガーのみセットアップ ===');
 
   // 既存の同名トリガーを削除
   deleteTriggersForFunction('processSentMailsForPassword');
 
-  // トリガー作成
+  // トリガー作成（1分ごと）
   ScriptApp.newTrigger('processSentMailsForPassword')
     .timeBased()
-    .everyMinutes(5)
+    .everyMinutes(1)
     .create();
 
-  Logger.log('✓ パスワード送信トリガー作成完了');
+  Logger.log('✓ ホワイトリスト登録トリガー作成完了');
 }
 
 /**

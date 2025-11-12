@@ -74,7 +74,11 @@ function createRawMessage(params) {
   if (params.to) lines.push('To: ' + params.to);
   if (params.cc) lines.push('Cc: ' + params.cc);
   if (params.bcc) lines.push('Bcc: ' + params.bcc);
-  lines.push('Subject: ' + params.subject);
+
+  // 件名をMIME encoded-word形式でエンコード（UTF-8）
+  var encodedSubject = encodeMimeWord(params.subject);
+  lines.push('Subject: ' + encodedSubject);
+
   lines.push('Content-Type: text/html; charset=UTF-8');
   lines.push('Content-Transfer-Encoding: base64');
 
@@ -94,6 +98,26 @@ function createRawMessage(params) {
   var base64 = Utilities.base64EncodeWebSafe(email);
 
   return base64;
+}
+
+/**
+ * MIME encoded-word形式でエンコード（RFC 2047）
+ * 日本語などの非ASCII文字を含む件名を正しくエンコード
+ * 形式: =?UTF-8?B?<Base64エンコードされた文字列>?=
+ */
+function encodeMimeWord(text) {
+  // ASCII文字のみの場合はそのまま返す
+  if (/^[\x00-\x7F]*$/.test(text)) {
+    return text;
+  }
+
+  // UTF-8でエンコードしてBase64化
+  var encoded = Utilities.base64Encode(text, Utilities.Charset.UTF_8);
+
+  // RFC 2047形式で返す
+  // 1行は75文字以内に収める必要があるが、Gmail APIが自動的に処理するため
+  // ここでは簡易的に全体をエンコード
+  return '=?UTF-8?B?' + encoded + '?=';
 }
 
 /**
