@@ -283,6 +283,54 @@ function saveToDrive(blob, trackingId) {
 }
 
 /**
+ * クラウドドライブのリンクを本文から削除
+ * Google Drive、BOX、Dropbox、OneDriveなどのリンクを削除
+ * HPや他のリンクは残す
+ */
+function removeCloudDriveLinks(body) {
+  // クラウドドライブのドメインパターン
+  var cloudDrivePatterns = [
+    // Google Drive
+    /https?:\/\/drive\.google\.com\/[^\s<>"]+/gi,
+    /https?:\/\/docs\.google\.com\/[^\s<>"]+/gi,
+
+    // BOX
+    /https?:\/\/[^\/]*\.box\.com\/[^\s<>"]+/gi,
+    /https?:\/\/app\.box\.com\/[^\s<>"]+/gi,
+
+    // Dropbox
+    /https?:\/\/[^\/]*\.dropbox\.com\/[^\s<>"]+/gi,
+    /https?:\/\/dl\.dropboxusercontent\.com\/[^\s<>"]+/gi,
+
+    // OneDrive
+    /https?:\/\/onedrive\.live\.com\/[^\s<>"]+/gi,
+    /https?:\/\/[^\/]*\.sharepoint\.com\/[^\s<>"]+/gi,
+
+    // その他のクラウドストレージ
+    /https?:\/\/[^\/]*\.googleapis\.com\/[^\s<>"]+/gi
+  ];
+
+  var modified = body;
+
+  // 各パターンでリンクを削除
+  for (var i = 0; i < cloudDrivePatterns.length; i++) {
+    var pattern = cloudDrivePatterns[i];
+
+    // HTMLリンク（<a>タグ）を削除
+    modified = modified.replace(new RegExp('<a[^>]*href=["\']?(' + pattern.source + ')["\']?[^>]*>.*?<\/a>', 'gi'), '');
+
+    // プレーンテキストURLを削除
+    modified = modified.replace(pattern, '');
+  }
+
+  // 連続する改行や空白を整理
+  modified = modified.replace(/(\s*<br\s*\/?>\s*){3,}/gi, '<br><br>');
+  modified = modified.replace(/(&nbsp;\s*){3,}/gi, ' ');
+
+  return modified;
+}
+
+/**
  * 本文からDriveリンクを抽出
  */
 function extractDriveLinks(body) {
@@ -322,6 +370,9 @@ function extractDriveLinks(body) {
 function modifyBodyContent(body, originalLinks, processedFiles, trackingId) {
   // 元の本文をそのまま保持（HTML形式）
   var modified = body;
+
+  // クラウドドライブのリンクを削除
+  modified = removeCloudDriveLinks(modified);
 
   // WebApp URLを生成
   var webappUrl = getWebAppUrl();
