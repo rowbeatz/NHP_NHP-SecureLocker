@@ -7,36 +7,49 @@
 /**
  * 24桁の強力なパスワードを生成
  * 要件: 英大文字、英小文字、数字、記号を各1文字以上含む
+ * 制約: 最初と最後の文字は記号不可（英数字のみ）
  */
 function generateSecurePassword() {
   var cfg = SYS.CRYPTO.PASSWORD_CHARSET;
   var length = SYS.CRYPTO.PASSWORD_LENGTH;
 
-  // 各カテゴリから最低1文字を確保
-  var password = [
-    cfg.UPPER.charAt(Math.floor(Math.random() * cfg.UPPER.length)),
-    cfg.LOWER.charAt(Math.floor(Math.random() * cfg.LOWER.length)),
-    cfg.DIGIT.charAt(Math.floor(Math.random() * cfg.DIGIT.length)),
-    cfg.SYMBOL.charAt(Math.floor(Math.random() * cfg.SYMBOL.length))
-  ];
+  // 英数字のみ（記号なし）
+  var alphanumericChars = cfg.UPPER + cfg.LOWER + cfg.DIGIT;
 
-  // 全文字種を結合
+  // 最初の文字は英数字のみ
+  var firstChar = alphanumericChars.charAt(Math.floor(Math.random() * alphanumericChars.length));
+
+  // 最後の文字は英数字のみ
+  var lastChar = alphanumericChars.charAt(Math.floor(Math.random() * alphanumericChars.length));
+
+  // 中間部分の文字列を生成（長さ = length - 2）
+  var middleLength = length - 2;
+  var middle = [];
+
+  // 各カテゴリから最低1文字を確保（記号も含む）
+  middle.push(cfg.UPPER.charAt(Math.floor(Math.random() * cfg.UPPER.length)));
+  middle.push(cfg.LOWER.charAt(Math.floor(Math.random() * cfg.LOWER.length)));
+  middle.push(cfg.DIGIT.charAt(Math.floor(Math.random() * cfg.DIGIT.length)));
+  middle.push(cfg.SYMBOL.charAt(Math.floor(Math.random() * cfg.SYMBOL.length)));
+
+  // 全文字種を結合（記号も含む）
   var allChars = cfg.UPPER + cfg.LOWER + cfg.DIGIT + cfg.SYMBOL;
 
   // 残りをランダムに追加
-  for (var i = password.length; i < length; i++) {
-    password.push(allChars.charAt(Math.floor(Math.random() * allChars.length)));
+  for (var i = middle.length; i < middleLength; i++) {
+    middle.push(allChars.charAt(Math.floor(Math.random() * allChars.length)));
   }
 
-  // シャッフル（Fisher-Yates）
-  for (var i = password.length - 1; i > 0; i--) {
+  // 中間部分をシャッフル（Fisher-Yates）
+  for (var i = middle.length - 1; i > 0; i--) {
     var j = Math.floor(Math.random() * (i + 1));
-    var temp = password[i];
-    password[i] = password[j];
-    password[j] = temp;
+    var temp = middle[i];
+    middle[i] = middle[j];
+    middle[j] = temp;
   }
 
-  return password.join('');
+  // 最初 + 中間 + 最後
+  return firstChar + middle.join('') + lastChar;
 }
 
 /**
