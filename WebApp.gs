@@ -129,12 +129,13 @@ function handleVerifyEmail(e) {
     // パスワードをメール送信
     sendPasswordEmail(normalizedEmail, password, trackingId);
 
-    // ログ更新
-    updateLogEntry(trackingId, {
-      passwordRequested: true,
-      passwordRequestedAt: new Date().toISOString(),
-      passwordRequestEmail: normalizedEmail
-    });
+    // ログ更新（パスワードリクエスト情報は将来の拡張用にコメント化）
+    // 現在のログスキーマではpasswordRequested等のフィールドは未対応
+    // updateLogEntry(trackingId, {
+    //   passwordRequested: true,
+    //   passwordRequestedAt: new Date().toISOString(),
+    //   passwordRequestEmail: normalizedEmail
+    // });
 
     return createJsonResponse({
       success: true,
@@ -296,10 +297,8 @@ function handleDownload(e) {
     // 10分後に削除するトリガーを設定
     scheduleFileDeletion(tempFile.getId(), 10);
 
-    // ログ更新
+    // ログ更新（ステータスのみ更新、downloadedAt/downloadedByは将来の拡張用）
     updateLogEntry(trackingId, {
-      downloadedAt: new Date().toISOString(),
-      downloadedBy: passwordData.email,
       status: 'DOWNLOADED'
     });
 
