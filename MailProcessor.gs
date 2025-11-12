@@ -6,8 +6,23 @@
 /**
  * メイン処理: 未処理メールを検出して処理
  * トリガーから定期的に実行される
+ *
+ * 重複防止対策:
+ * 1. LockServiceで並行実行を防止
+ * 2. 処理開始時にラベルを付与（処理完了前にラベル付与）
+ * 3. エラー時はラベルを削除して再処理可能に
  */
 function processIncomingMails() {
+  // ★ LockServiceでロックを取得（並行実行防止）
+  var lock = LockService.getScriptLock();
+  try {
+    // 最大30秒待機してロックを取得
+    lock.waitLock(30000);
+  } catch (e) {
+    Logger.log('⚠ ロック取得失敗: 他の処理が実行中です。スキップします。');
+    return;  // 他のトリガーが実行中なので今回はスキップ
+  }
+
   try {
     validateConfig();
 
@@ -31,15 +46,21 @@ function processIncomingMails() {
       // スレッドの最後のメッセージ（ユーザーが送信したもの）を処理
       var message = messages[messages.length - 1];
 
+      // ★ 処理開始時にラベルを付与（重複防止の最重要対策）
+      thread.addLabel(label);
+      Logger.log('✓ 処理開始ラベル付与: ' + thread.getId());
+
       try {
         processMessage(message, thread);
-
-        // 処理済みラベルを付与
-        thread.addLabel(label);
         Logger.log('✓ メッセージ処理完了: ' + message.getId());
 
       } catch (e) {
         Logger.log('✗ メッセージ処理エラー: ' + e.message);
+
+        // ★ エラー時はラベルを削除（再処理できるように）
+        thread.removeLabel(label);
+        Logger.log('✓ エラーによりラベル削除（再処理可能に）');
+
         handleProcessingError(message, thread, e);
       }
     }
@@ -49,6 +70,9 @@ function processIncomingMails() {
   } catch (e) {
     Logger.log('=== メール処理エラー: ' + e.message + ' ===');
     throw e;
+  } finally {
+    // ★ 必ずロックを解放
+    lock.releaseLock();
   }
 }
 

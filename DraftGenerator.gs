@@ -10,10 +10,36 @@
  * @param {string} body - 本文
  * @param {string} trackingId - 追跡ID
  * @param {Array} files - ファイル情報
+ *
+ * 重複防止対策:
+ * 1. 既存ドラフトに追跡IDが含まれているかチェック
+ * 2. 既存の場合は新規作成をスキップ
  */
 function createDraftInThread(thread, subject, body, trackingId, files) {
   try {
     Logger.log('--- ドラフト作成開始 ---');
+
+    // ★ 既存ドラフトをチェック（重複防止）
+    var existingDrafts = thread.getDrafts();
+    Logger.log('既存ドラフト数: ' + existingDrafts.length);
+
+    for (var i = 0; i < existingDrafts.length; i++) {
+      var draft = existingDrafts[i];
+      var draftMessage = draft.getMessage();
+      var draftBody = draftMessage.getBody();
+
+      // 追跡IDが本文に含まれている場合、既にドラフト作成済み
+      if (draftBody.indexOf(trackingId) !== -1) {
+        var existingDraftId = draft.getId();
+        Logger.log('⚠ 既存ドラフト検出: ' + existingDraftId + ' (追跡ID: ' + trackingId + ')');
+        Logger.log('✓ ドラフト作成スキップ（重複防止）');
+
+        // 既存のドラフトIDを返す
+        return existingDraftId;
+      }
+    }
+
+    Logger.log('既存ドラフトなし。新規作成します。');
 
     var userEmail = Session.getActiveUser().getEmail();
     var threadId = thread.getId();
