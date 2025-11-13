@@ -12,37 +12,60 @@
  * @param {Array} files - ファイル情報
  *
  * 重複防止対策:
- * 1. 既存ドラフトに追跡IDが含まれているかチェック
- * 2. 既存の場合は新規作成をスキップ
+ * 1. ドラフト作成済みラベルをチェック
+ * 2. Gmail Advanced APIで既存ドラフトを確認
+ * 3. 既存の場合は新規作成をスキップ
  */
 function createDraftInThread(thread, subject, body, trackingId, files) {
   try {
     Logger.log('--- ドラフト作成開始 ---');
 
-    // ★ 既存ドラフトをチェック（重複防止）
-    var existingDrafts = thread.getDrafts();
-    Logger.log('既存ドラフト数: ' + existingDrafts.length);
+    var threadId = thread.getId();
 
-    for (var i = 0; i < existingDrafts.length; i++) {
-      var draft = existingDrafts[i];
-      var draftMessage = draft.getMessage();
-      var draftBody = draftMessage.getBody();
+    // ★ ラベルで既存ドラフトチェック（高速）
+    var draftCreatedLabel = getOrCreateLabel(SYS.LABELS.DRAFT_CREATED);
+    var labels = thread.getLabels();
 
-      // 追跡IDが本文に含まれている場合、既にドラフト作成済み
-      if (draftBody.indexOf(trackingId) !== -1) {
-        var existingDraftId = draft.getId();
-        Logger.log('⚠ 既存ドラフト検出: ' + existingDraftId + ' (追跡ID: ' + trackingId + ')');
-        Logger.log('✓ ドラフト作成スキップ（重複防止）');
+    for (var i = 0; i < labels.length; i++) {
+      if (labels[i].getName() === SYS.LABELS.DRAFT_CREATED) {
+        Logger.log('⚠ ドラフト作成済みラベル検出（スレッド: ' + threadId + '）');
 
-        // 既存のドラフトIDを返す
-        return existingDraftId;
+        // Gmail Advanced APIで既存ドラフトを取得して確認
+        try {
+          var drafts = Gmail.Users.Drafts.list('me', {
+            q: 'in:drafts'
+          });
+
+          if (drafts.drafts) {
+            for (var j = 0; j < drafts.drafts.length; j++) {
+              var draft = Gmail.Users.Drafts.get('me', drafts.drafts[j].id);
+
+              // スレッドIDが一致するか確認
+              if (draft.message.threadId === threadId) {
+                // RAWメッセージをデコードして追跡IDをチェック
+                var rawData = Utilities.newBlob(
+                  Utilities.base64Decode(draft.message.raw)
+                ).getDataAsString();
+
+                if (rawData.indexOf(trackingId) !== -1) {
+                  Logger.log('⚠ 既存ドラフト検出: ' + draft.id + ' (追跡ID: ' + trackingId + ')');
+                  Logger.log('✓ ドラフト作成スキップ（重複防止）');
+                  return draft.id;
+                }
+              }
+            }
+          }
+        } catch (e) {
+          Logger.log('⚠ 既存ドラフト確認エラー（続行します）: ' + e.message);
+        }
+
+        break;
       }
     }
 
     Logger.log('既存ドラフトなし。新規作成します。');
 
     var userEmail = Session.getActiveUser().getEmail();
-    var threadId = thread.getId();
 
     // BCC設定: 送信者自身 + トリガーアドレス
     var bccList = [userEmail, SYS.TRIGGER_EMAIL];
@@ -78,8 +101,7 @@ function createDraftInThread(thread, subject, body, trackingId, files) {
     });
 
     // ラベルを付与
-    var label = getOrCreateLabel(SYS.LABELS.DRAFT_CREATED);
-    thread.addLabel(label);
+    thread.addLabel(draftCreatedLabel);
 
     return draftId;
 
