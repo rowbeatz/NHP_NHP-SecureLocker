@@ -45,6 +45,20 @@ function processIncomingMails() {
 
       // スレッドの最後のメッセージ（ユーザーが送信したもの）を処理
       var message = messages[messages.length - 1];
+      var messageId = message.getId();
+
+      // ★★★ 重複チェック: SourceMsgIdがログに既に存在するか確認 ★★★
+      var existingLog = getLogEntryBySourceMsgId(messageId);
+      if (existingLog) {
+        Logger.log('⚠ 既に処理済みのメッセージ: ' + messageId);
+        Logger.log('  → 既存TrackingID: ' + existingLog.trackingId);
+        Logger.log('  → ステータス: ' + existingLog.status);
+        Logger.log('  → 処理をスキップ（重複防止）');
+
+        // 処理済みラベルを付与してスキップ
+        thread.addLabel(label);
+        continue;
+      }
 
       // ★ 処理開始時にラベルを付与（重複防止の最重要対策）
       thread.addLabel(label);
@@ -160,7 +174,30 @@ function processMessage(message, thread) {
     status: 'FILES_ENCRYPTED'
   });
 
-  // 5. ドラフトを作成
+  // 5. ドラフトを作成（ファイルが存在する場合のみ）
+  if (processedFiles.length === 0) {
+    Logger.log('⚠ ファイルが0件のため下書き作成をスキップ');
+    Logger.log('  → 添付ファイルまたはDriveリンクが必要です');
+    updateLogEntry(trackingId, {
+      status: 'NO_FILES',
+      errorMessage: 'ファイルが0件のため処理中止'
+    });
+    throw new Error('処理対象のファイルがありません');
+  }
+
+  // ★★★ ファイル目録とリンクの整合性チェック ★★★
+  if (processedFiles.length !== encryptedLinks.length) {
+    Logger.log('✗ エラー: ファイル数とリンク数が一致しません');
+    Logger.log('  → ファイル数: ' + processedFiles.length);
+    Logger.log('  → リンク数: ' + encryptedLinks.length);
+    updateLogEntry(trackingId, {
+      status: 'MISMATCH_ERROR',
+      errorMessage: 'ファイル数(' + processedFiles.length + ')とリンク数(' + encryptedLinks.length + ')が不一致'
+    });
+    throw new Error('ファイル数とリンク数が一致しません');
+  }
+
+  Logger.log('✓ ファイル目録確認完了: ' + processedFiles.length + '件');
   createDraftInThread(thread, subject, modifiedBody, trackingId, processedFiles);
 
   Logger.log('--- 処理完了: ' + trackingId + ' ---');

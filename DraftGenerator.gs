@@ -20,6 +20,12 @@ function createDraftInThread(thread, subject, body, trackingId, files) {
   try {
     Logger.log('--- ドラフト作成開始 ---');
 
+    // ★★★ ファイル存在チェック（2重チェック） ★★★
+    if (!files || files.length === 0) {
+      Logger.log('✗ エラー: ファイルが0件です。下書き作成を中止します。');
+      throw new Error('ファイルが存在しないため下書き作成できません');
+    }
+
     var threadId = thread.getId();
 
     // ★ ラベルで既存ドラフトチェック（高速）
