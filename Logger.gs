@@ -220,6 +220,59 @@ function getLogEntry(trackingId) {
 }
 
 /**
+ * SourceMsgIdでログエントリーを検索（重複防止用）
+ * @param {string} sourceMsgId - 元メッセージID
+ * @return {Object|null} 既存のログデータ（最新のもの）
+ */
+function getLogEntryBySourceMsgId(sourceMsgId) {
+  try {
+    var ssId = PropertiesService.getScriptProperties().getProperty('LOG_SPREADSHEET_ID');
+    if (!ssId) {
+      return null;
+    }
+
+    var ss = SpreadsheetApp.openById(ssId);
+    var sheet = ss.getSheetByName('Logs');
+
+    if (!sheet) {
+      return null;
+    }
+
+    var data = sheet.getDataRange().getValues();
+
+    // SourceMsgIdで検索（最新のものを返す）
+    // 逆順でループして最新エントリーを優先
+    for (var i = data.length - 1; i >= 1; i--) {
+      if (data[i][3] === sourceMsgId) {
+        return {
+          timestamp: data[i][0],
+          trackingId: data[i][1],
+          ownerEmail: data[i][2],
+          sourceMsgId: data[i][3],
+          sourceThreadId: data[i][4],
+          files: JSON.parse(data[i][5] || '[]'),
+          passwords: JSON.parse(data[i][6] || '{}'),
+          encryptedLinks: JSON.parse(data[i][7] || '[]'),
+          draftId: data[i][8],
+          sentMsgId: data[i][9],
+          recipients: JSON.parse(data[i][10] || '[]'),
+          whitelist: JSON.parse(data[i][11] || '[]'),
+          expiryAt: data[i][12],
+          status: data[i][13],
+          errorMessage: data[i][14]
+        };
+      }
+    }
+
+    return null;
+
+  } catch (e) {
+    Logger.log('SourceMsgId検索エラー: ' + e.message);
+    return null;
+  }
+}
+
+/**
  * 期限切れのログエントリーを取得
  * @return {Array} 期限切れエントリーのリスト
  */

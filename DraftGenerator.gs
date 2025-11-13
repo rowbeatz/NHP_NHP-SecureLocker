@@ -10,13 +10,68 @@
  * @param {string} body - 本文
  * @param {string} trackingId - 追跡ID
  * @param {Array} files - ファイル情報
+ *
+ * 重複防止対策:
+ * 1. ドラフト作成済みラベルをチェック
+ * 2. Gmail Advanced APIで既存ドラフトを確認
+ * 3. 既存の場合は新規作成をスキップ
  */
 function createDraftInThread(thread, subject, body, trackingId, files) {
   try {
     Logger.log('--- ドラフト作成開始 ---');
 
-    var userEmail = Session.getActiveUser().getEmail();
+    // ★★★ ファイル存在チェック（2重チェック） ★★★
+    if (!files || files.length === 0) {
+      Logger.log('✗ エラー: ファイルが0件です。下書き作成を中止します。');
+      throw new Error('ファイルが存在しないため下書き作成できません');
+    }
+
     var threadId = thread.getId();
+
+    // ★ ラベルで既存ドラフトチェック（高速）
+    var draftCreatedLabel = getOrCreateLabel(SYS.LABELS.DRAFT_CREATED);
+    var labels = thread.getLabels();
+
+    for (var i = 0; i < labels.length; i++) {
+      if (labels[i].getName() === SYS.LABELS.DRAFT_CREATED) {
+        Logger.log('⚠ ドラフト作成済みラベル検出（スレッド: ' + threadId + '）');
+
+        // Gmail Advanced APIで既存ドラフトを取得して確認
+        try {
+          var drafts = Gmail.Users.Drafts.list('me', {
+            q: 'in:drafts'
+          });
+
+          if (drafts.drafts) {
+            for (var j = 0; j < drafts.drafts.length; j++) {
+              var draft = Gmail.Users.Drafts.get('me', drafts.drafts[j].id);
+
+              // スレッドIDが一致するか確認
+              if (draft.message.threadId === threadId) {
+                // RAWメッセージをデコードして追跡IDをチェック
+                var rawData = Utilities.newBlob(
+                  Utilities.base64Decode(draft.message.raw)
+                ).getDataAsString();
+
+                if (rawData.indexOf(trackingId) !== -1) {
+                  Logger.log('⚠ 既存ドラフト検出: ' + draft.id + ' (追跡ID: ' + trackingId + ')');
+                  Logger.log('✓ ドラフト作成スキップ（重複防止）');
+                  return draft.id;
+                }
+              }
+            }
+          }
+        } catch (e) {
+          Logger.log('⚠ 既存ドラフト確認エラー（続行します）: ' + e.message);
+        }
+
+        break;
+      }
+    }
+
+    Logger.log('既存ドラフトなし。新規作成します。');
+
+    var userEmail = Session.getActiveUser().getEmail();
 
     // BCC設定: 送信者自身 + トリガーアドレス
     var bccList = [userEmail, SYS.TRIGGER_EMAIL];
@@ -52,8 +107,7 @@ function createDraftInThread(thread, subject, body, trackingId, files) {
     });
 
     // ラベルを付与
-    var label = getOrCreateLabel(SYS.LABELS.DRAFT_CREATED);
-    thread.addLabel(label);
+    thread.addLabel(draftCreatedLabel);
 
     return draftId;
 
