@@ -118,28 +118,60 @@ function extractTrackingId(body) {
 
 /**
  * メッセージから宛先（To, Cc, Bcc）を抽出
- * Advanced Gmail APIを使用（送信済みメールのBccも取得可能）
+ * BCCで受信したメールから元の宛先を取得するため、RAW形式で解析
  */
 function extractRecipients(message) {
   try {
     var messageId = message.getId();
 
-    // Advanced Gmail APIで詳細を取得
+    // Advanced Gmail APIでRAW形式を取得
     var gmailMessage = Gmail.Users.Messages.get('me', messageId, {
-      format: 'full'
+      format: 'raw'
     });
 
-    var headers = gmailMessage.payload.headers;
+    // Base64url デコード
+    var rawData = Utilities.newBlob(
+      Utilities.base64Decode(gmailMessage.raw, Utilities.Charset.UTF_8)
+    ).getDataAsString();
+
+    Logger.log('--- RAWメッセージヘッダー（最初の2000文字） ---');
+    Logger.log(rawData.substring(0, 2000));
+
     var recipients = [];
 
-    // To, Cc, Bcc ヘッダーを抽出
-    for (var i = 0; i < headers.length; i++) {
-      var header = headers[i];
-      if (header.name === 'To' || header.name === 'Cc' || header.name === 'Bcc') {
-        var addresses = parseEmailAddresses(header.value);
-        recipients = recipients.concat(addresses);
-      }
+    // To ヘッダーを抽出
+    var toMatch = rawData.match(/^To:\s*(.+?)$/m);
+    if (toMatch) {
+      Logger.log('To ヘッダー発見: ' + toMatch[1]);
+      var toAddresses = parseEmailAddresses(toMatch[1]);
+      recipients = recipients.concat(toAddresses);
     }
+
+    // Cc ヘッダーを抽出
+    var ccMatch = rawData.match(/^Cc:\s*(.+?)$/m);
+    if (ccMatch) {
+      Logger.log('Cc ヘッダー発見: ' + ccMatch[1]);
+      var ccAddresses = parseEmailAddresses(ccMatch[1]);
+      recipients = recipients.concat(ccAddresses);
+    }
+
+    // Bcc ヘッダーを抽出（送信者の送信済みメールには含まれる）
+    var bccMatch = rawData.match(/^Bcc:\s*(.+?)$/m);
+    if (bccMatch) {
+      Logger.log('Bcc ヘッダー発見: ' + bccMatch[1]);
+      var bccAddresses = parseEmailAddresses(bccMatch[1]);
+      recipients = recipients.concat(bccAddresses);
+    }
+
+    // From ヘッダーも取得（送信者）
+    var fromMatch = rawData.match(/^From:\s*(.+?)$/m);
+    if (fromMatch) {
+      Logger.log('From ヘッダー発見: ' + fromMatch[1]);
+      var fromAddresses = parseEmailAddresses(fromMatch[1]);
+      recipients = recipients.concat(fromAddresses);
+    }
+
+    Logger.log('抽出された全アドレス: ' + JSON.stringify(recipients));
 
     // 重複除去
     var unique = [];
@@ -160,10 +192,13 @@ function extractRecipients(message) {
       }
     }
 
+    Logger.log('最終的な宛先リスト: ' + JSON.stringify(filtered));
+
     return filtered;
 
   } catch (e) {
     Logger.log('宛先抽出エラー: ' + e.message);
+    Logger.log('スタックトレース: ' + e.stack);
     return [];
   }
 }
