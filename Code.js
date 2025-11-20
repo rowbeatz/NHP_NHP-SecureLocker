@@ -6,7 +6,7 @@ function CFGI(key, def){var v=CFG(key,null);if(v===null||v===undefined||v==="")r
 
 /* ========= System config ========= */
 var SYS={
-  SYSTEM_EMAIL:CFG("SYSTEM_EMAIL","y-furusawa+ango@nhp.jp"),
+  SYSTEM_EMAIL:CFG("SYSTEM_EMAIL","securelocker@nhp.jp"),
   SYSTEM_NAME_JP:CFG("SYSTEM_NAME_JP","NHP AI セキュアLocker システム"),
   SYSTEM_NAME_EN:CFG("SYSTEM_NAME_EN","NHP SecureLocker"),
   SHARED_DRIVE_ID:CFG("SHARED_DRIVE_ID","0APbz-T9cPss3Uk9PVA"),

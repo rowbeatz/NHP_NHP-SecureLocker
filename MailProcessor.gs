@@ -1,6 +1,6 @@
 /**
  * MailProcessor.gs - メール処理エンジン
- * ango@nhp.jp宛のメールを検出・処理
+ * securelocker@nhp.jp宛のメールを検出・処理
  */
 
 /**
