@@ -20,19 +20,18 @@ function processSentMailsForPassword() {
 
     // BCC受信したメール（送信済みドラフト）を検索
     var pwSentLabel = getOrCreateLabel(SYS.LABELS.PW_SENT);
-    var draftCreatedLabel = getOrCreateLabel(SYS.LABELS.DRAFT_CREATED);
 
-    // 変更: in:sent → to:TRIGGER_EMAIL（BCC受信メールを検出）
-    // ドラフト作成済みラベルがあり、パスワード送信済みラベルがないものを検索
+    // ★ 重要な変更: label:es_draft_created を削除
+    // 理由: 送信済みドラフト（BCCで受信）は別メッセージなのでラベルが付いていない
+    // 代わりに、本文に追跡IDが含まれているかで判定
     var searchQuery = 'to:' + SYS.TRIGGER_EMAIL +
-                      ' label:' + SYS.LABELS.DRAFT_CREATED +
                       ' -label:' + SYS.LABELS.PW_SENT +
                       ' newer_than:' + SYS.MAIL.SEARCH_WINDOW_DAYS + 'd';
 
     Logger.log('検索クエリ: ' + searchQuery);
     var threads = GmailApp.search(searchQuery, 0, 20);  // 最大20件
 
-    Logger.log('送信済みスレッド: ' + threads.length + ' 件');
+    Logger.log('受信メール: ' + threads.length + ' 件');
 
     var processedCount = 0;
 
