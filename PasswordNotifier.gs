@@ -7,15 +7,26 @@
 /**
  * メイン処理: 送信済みメールを検出してホワイトリストに登録
  * トリガーから定期的に実行される
+ *
+ * 【重要】BCCで受信したメールを検索
+ * - ドラフトは個人ユーザーが送信する
+ * - BCCに securelocker@nhp.jp が含まれているため、受信トレイに届く
+ * - 'to:securelocker@nhp.jp' で検索すると BCC受信メールも取得できる
  */
 function processSentMailsForPassword() {
   try {
     var userEmail = Session.getActiveUser().getEmail();
     Logger.log('=== ホワイトリスト登録処理開始: ' + userEmail + ' ===');
 
-    // 送信済みメールから追跡ID付きメールを検索
+    // BCC受信したメール（送信済みドラフト）を検索
     var pwSentLabel = getOrCreateLabel(SYS.LABELS.PW_SENT);
-    var searchQuery = 'in:sent -label:' + SYS.LABELS.PW_SENT +
+    var draftCreatedLabel = getOrCreateLabel(SYS.LABELS.DRAFT_CREATED);
+
+    // 変更: in:sent → to:TRIGGER_EMAIL（BCC受信メールを検出）
+    // ドラフト作成済みラベルがあり、パスワード送信済みラベルがないものを検索
+    var searchQuery = 'to:' + SYS.TRIGGER_EMAIL +
+                      ' label:' + SYS.LABELS.DRAFT_CREATED +
+                      ' -label:' + SYS.LABELS.PW_SENT +
                       ' newer_than:' + SYS.MAIL.SEARCH_WINDOW_DAYS + 'd';
 
     Logger.log('検索クエリ: ' + searchQuery);
@@ -29,64 +40,58 @@ function processSentMailsForPassword() {
       var thread = threads[i];
       var messages = thread.getMessages();
 
-      // スレッド内の送信済みメッセージを確認
-      for (var j = 0; j < messages.length; j++) {
-        var message = messages[j];
+      // スレッド内の最新メッセージ（送信済みドラフト）を処理
+      // BCCで受信した最後のメッセージが送信済みドラフト
+      var message = messages[messages.length - 1];
 
-        // 送信者が自分かチェック
-        var from = message.getFrom();
-        if (from.indexOf(userEmail) === -1) {
-          continue;  // 自分が送信したメールではない
-        }
+      // 本文から追跡IDを抽出
+      var body = message.getPlainBody();
+      var trackingId = extractTrackingId(body);
 
-        // 本文から追跡IDを抽出
-        var body = message.getPlainBody();
-        var trackingId = extractTrackingId(body);
-
-        if (!trackingId) {
-          continue;  // 追跡IDなし
-        }
-
-        Logger.log('追跡ID検出: ' + trackingId);
-
-        // ログからパスワード情報を取得
-        var logEntry = getLogEntry(trackingId);
-
-        if (!logEntry) {
-          Logger.log('  ログエントリーが見つかりません: ' + trackingId);
-          continue;
-        }
-
-        if (Object.keys(logEntry.passwords).length === 0) {
-          Logger.log('  パスワード情報なし: ' + trackingId);
-          continue;
-        }
-
-        // 宛先を抽出（Advanced Gmail API使用）
-        var recipients = extractRecipients(message);
-
-        if (recipients.length === 0) {
-          Logger.log('  宛先が見つかりません: ' + trackingId);
-          continue;
-        }
-
-        Logger.log('  宛先: ' + recipients.join(', '));
-
-        // ホワイトリストのみ保存（パスワードは送信しない）
-        // パスワードはダウンロードページから発行される
-        updateLogEntry(trackingId, {
-          recipients: recipients,
-          whitelist: recipients,  // ホワイトリストとして保存
-          sentMsgId: message.getId(),
-          status: 'DRAFT_SENT'  // PASSWORD_SENTではなくDRAFT_SENT
-        });
-
-        // 処理済みラベルを付与
-        thread.addLabel(pwSentLabel);
-
-        processedCount++;
-        Logger.log('  ✓ ホワイトリスト登録完了: ' + recipients.join(', '));
+      if (!trackingId) {
+        Logger.log('  追跡IDなし（スレッド: ' + thread.getId() + '）');
+        continue;  // 追跡IDなし
       }
+
+      Logger.log('追跡ID検出: ' + trackingId);
+
+      // ログからパスワード情報を取得
+      var logEntry = getLogEntry(trackingId);
+
+      if (!logEntry) {
+        Logger.log('  ログエントリーが見つかりません: ' + trackingId);
+        continue;
+      }
+
+      if (Object.keys(logEntry.passwords).length === 0) {
+        Logger.log('  パスワード情報なし: ' + trackingId);
+        continue;
+      }
+
+      // 宛先を抽出（Advanced Gmail API使用）
+      var recipients = extractRecipients(message);
+
+      if (recipients.length === 0) {
+        Logger.log('  宛先が見つかりません: ' + trackingId);
+        continue;
+      }
+
+      Logger.log('  宛先: ' + recipients.join(', '));
+
+      // ホワイトリストのみ保存（パスワードは送信しない）
+      // パスワードはダウンロードページから発行される
+      updateLogEntry(trackingId, {
+        recipients: recipients,
+        whitelist: recipients,  // ホワイトリストとして保存
+        sentMsgId: message.getId(),
+        status: 'DRAFT_SENT'  // PASSWORD_SENTではなくDRAFT_SENT
+      });
+
+      // 処理済みラベルを付与
+      thread.addLabel(pwSentLabel);
+
+      processedCount++;
+      Logger.log('  ✓ ホワイトリスト登録完了: ' + recipients.join(', '));
     }
 
     Logger.log('=== ホワイトリスト登録完了: ' + processedCount + ' 件 ===');
