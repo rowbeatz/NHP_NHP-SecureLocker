@@ -114,7 +114,7 @@ random = HMAC-SHA256(seed, SECRET_HMAC)
 ## システムフロー
 
 ```
-[送信者] → y-furusawa+ango@nhp.jp 宛にメール送信（添付/Driveリンク付き）
+[送信者] → securelocker@nhp.jp 宛にメール送信（添付/Driveリンク付き）
    ↓
 [processIncomingMails] 1分ごとのトリガーで自動実行
    ↓
@@ -122,7 +122,7 @@ random = HMAC-SHA256(seed, SECRET_HMAC)
    ↓
 [クラウドリンク除去] 本文からGoogle Drive、BOX、Dropbox等のリンクを自動削除
    ↓
-[ドラフト生成] 同スレッド、Bcc: ango@nhp.jp + 送信者（RFC 2047 MIME件名エンコード）
+[ドラフト生成] 同スレッド、Bcc: securelocker@nhp.jp + 送信者（RFC 2047 MIME件名エンコード）
    ↓
 [送信者] To/Cc追加 → 手動送信
    ↓
@@ -226,7 +226,7 @@ random = HMAC-SHA256(seed, SECRET_HMAC)
 #### 1. メール作成と送信
 
 ```
-宛先: y-furusawa+ango@nhp.jp
+宛先: securelocker@nhp.jp
 件名: （自由）
 本文: （実際に送りたい内容）
 添付: 暗号化したいファイル、またはDriveリンク
@@ -242,7 +242,7 @@ Gmailのドラフトに以下の内容で自動生成されます:
 
 - 本文の添付/リンクが暗号化Driveリンクに差し替え
 - 本文末に追跡ID `[#ANGO-XXXXXXXX]` が付与
-- Bcc: `y-furusawa+ango@nhp.jp, 送信者自身`
+- Bcc: `securelocker@nhp.jp, 送信者自身`
 
 #### 3. 宛先追加と送信
 
@@ -341,7 +341,7 @@ testTrackingIdGeneration()
 
 ### メール処理テスト
 
-実際に `y-furusawa+ango@nhp.jp` 宛にテストメールを送信してから:
+実際に `securelocker@nhp.jp` 宛にテストメールを送信してから:
 
 ```javascript
 // MailProcessor.gs
@@ -371,14 +371,14 @@ testLogger()
 
 **確認事項**:
 1. トリガーが設定されているか（`listAllTriggers()`）
-2. 宛先が `y-furusawa+ango@nhp.jp` か
+2. 宛先が `securelocker@nhp.jp` か
 3. ラベル `es_processed` が付与されていないか
 
 ### パスワード通知メールが送信されない
 
 **確認事項**:
 1. ドラフトを実際に送信したか
-2. Bccに `y-furusawa+ango@nhp.jp` が含まれているか
+2. Bccに `securelocker@nhp.jp` が含まれているか
 3. 追跡ID `[#ANGO-XXXXXXXX]` が本文にあるか
 4. ラベル `es_pw_sent` が付与されていないか
 
@@ -424,7 +424,7 @@ NHP-SecureLocker/
 ├── appsscript.json          # プロジェクト設定（Advanced Services、OAuth Scopes）
 ├── Config.gs                # システム設定・定数（SYSオブジェクト）
 ├── Crypto.gs                # 暗号化エンジン（AES-256-CBC、PBKDF2、HMAC）
-├── MailProcessor.gs         # メール処理（ango@宛検出、添付/リンク暗号化、クラウドリンク除去）
+├── MailProcessor.gs         # メール処理（securelocker@宛検出、添付/リンク暗号化、クラウドリンク除去）
 ├── DraftGenerator.gs        # ドラフト生成（Advanced Gmail API、RFC 2047 MIME encoding）
 ├── PasswordNotifier.gs      # パスワード通知（送信済み検出、宛先抽出、自動送信）
 ├── LifecycleManager.gs      # ライフサイクル管理（15日後自動削除）
@@ -473,7 +473,7 @@ NHP-SecureLocker/
   - 日本語件名をUTF-8 Base64でエンコード
   - Shift-JIS環境でも文字化けしない
   - 形式: `=?UTF-8?B?<Base64>?=`
-- Bcc自動設定（ango@nhp.jp + 送信者）
+- Bcc自動設定（securelocker@nhp.jp + 送信者）
 
 #### **PasswordNotifier.gs** - パスワード通知
 - `processSentMailsForPassword()` - 送信済み検出（1分ごとトリガー）

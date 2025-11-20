@@ -9,7 +9,7 @@ var SYS = (function() {
 
   return {
     // トリガーメールアドレス（この宛先へ送信されたメールを処理）
-    TRIGGER_EMAIL: 'y-furusawa+ango@nhp.jp',
+    TRIGGER_EMAIL: 'securelocker@nhp.jp',
 
     // 共有ドライブID（必須：事前に共有ドライブのIDを設定）
     // ※ bootstrap実行前にこの値をScript Propertiesに設定すること
