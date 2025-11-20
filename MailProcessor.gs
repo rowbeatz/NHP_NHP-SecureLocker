@@ -31,7 +31,13 @@ function processIncomingMails() {
 
     // 未処理メールを検索
     var label = getOrCreateLabel(SYS.LABELS.PROCESSED);
-    var searchQuery = 'to:' + SYS.TRIGGER_EMAIL + ' -label:' + SYS.LABELS.PROCESSED +
+    var draftCreatedLabel = getOrCreateLabel(SYS.LABELS.DRAFT_CREATED);
+
+    // ★ 重要: -label:es_draft_created を追加
+    // 送信済みドラフト（BCCで受信）を除外するため
+    var searchQuery = 'to:' + SYS.TRIGGER_EMAIL +
+                      ' -label:' + SYS.LABELS.PROCESSED +
+                      ' -label:' + SYS.LABELS.DRAFT_CREATED +
                       ' newer_than:' + SYS.MAIL.SEARCH_WINDOW_DAYS + 'd';
 
     Logger.log('検索クエリ: ' + searchQuery);
