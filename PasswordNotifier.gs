@@ -37,48 +37,78 @@ function processSentMailsForPassword() {
 
     for (var i = 0; i < threads.length; i++) {
       var thread = threads[i];
+      Logger.log('--- スレッド ' + (i + 1) + '/' + threads.length + ': ' + thread.getId() + ' ---');
+
       var messages = thread.getMessages();
+      Logger.log('  メッセージ数: ' + messages.length);
+
+      // スレッド内の全メッセージをログ出力（デバッグ用）
+      for (var m = 0; m < messages.length; m++) {
+        var msg = messages[m];
+        Logger.log('    メッセージ[' + m + ']: ' + msg.getId());
+        Logger.log('      From: ' + msg.getFrom());
+        Logger.log('      Subject: ' + msg.getSubject());
+        Logger.log('      Date: ' + msg.getDate());
+
+        // 追跡ID確認
+        var testBody = msg.getPlainBody();
+        var testTracking = extractTrackingId(testBody);
+        Logger.log('      追跡ID: ' + (testTracking || 'なし'));
+      }
 
       // スレッド内の最新メッセージ（送信済みドラフト）を処理
       // BCCで受信した最後のメッセージが送信済みドラフト
       var message = messages[messages.length - 1];
+      Logger.log('  → 処理対象メッセージ: ' + message.getId());
 
       // 本文から追跡IDを抽出
       var body = message.getPlainBody();
       var trackingId = extractTrackingId(body);
 
       if (!trackingId) {
-        Logger.log('  追跡IDなし（スレッド: ' + thread.getId() + '）');
+        Logger.log('  ✗ 追跡IDなし（スレッド: ' + thread.getId() + '）');
+        Logger.log('  → スキップ');
         continue;  // 追跡IDなし
       }
 
-      Logger.log('追跡ID検出: ' + trackingId);
+      Logger.log('  ✓ 追跡ID検出: ' + trackingId);
 
       // ログからパスワード情報を取得
       var logEntry = getLogEntry(trackingId);
 
       if (!logEntry) {
-        Logger.log('  ログエントリーが見つかりません: ' + trackingId);
+        Logger.log('  ✗ ログエントリーが見つかりません: ' + trackingId);
+        Logger.log('  → スキップ');
         continue;
       }
+
+      Logger.log('  ✓ ログエントリー取得成功');
+      Logger.log('    Status: ' + logEntry.status);
+      Logger.log('    Files: ' + logEntry.files.length + '件');
 
       if (Object.keys(logEntry.passwords).length === 0) {
-        Logger.log('  パスワード情報なし: ' + trackingId);
+        Logger.log('  ✗ パスワード情報なし: ' + trackingId);
+        Logger.log('  → スキップ');
         continue;
       }
 
+      Logger.log('  ✓ パスワード情報あり: ' + Object.keys(logEntry.passwords).length + '件');
+
       // 宛先を抽出（Advanced Gmail API使用）
+      Logger.log('  → 宛先抽出開始...');
       var recipients = extractRecipients(message);
 
       if (recipients.length === 0) {
-        Logger.log('  宛先が見つかりません: ' + trackingId);
+        Logger.log('  ✗ 宛先が見つかりません: ' + trackingId);
+        Logger.log('  → スキップ');
         continue;
       }
 
-      Logger.log('  宛先: ' + recipients.join(', '));
+      Logger.log('  ✓ 宛先抽出成功: ' + recipients.join(', '));
 
       // ホワイトリストのみ保存（パスワードは送信しない）
       // パスワードはダウンロードページから発行される
+      Logger.log('  → ログ更新開始...');
       updateLogEntry(trackingId, {
         recipients: recipients,
         whitelist: recipients,  // ホワイトリストとして保存
@@ -86,11 +116,14 @@ function processSentMailsForPassword() {
         status: 'DRAFT_SENT'  // PASSWORD_SENTではなくDRAFT_SENT
       });
 
+      Logger.log('  ✓ ログ更新完了');
+
       // 処理済みラベルを付与
       thread.addLabel(pwSentLabel);
+      Logger.log('  ✓ ラベル付与完了: ' + SYS.LABELS.PW_SENT);
 
       processedCount++;
-      Logger.log('  ✓ ホワイトリスト登録完了: ' + recipients.join(', '));
+      Logger.log('  ✅ ホワイトリスト登録完了: ' + recipients.join(', '));
     }
 
     Logger.log('=== ホワイトリスト登録完了: ' + processedCount + ' 件 ===');
@@ -122,19 +155,24 @@ function extractTrackingId(body) {
 function extractRecipients(message) {
   try {
     var messageId = message.getId();
+    Logger.log('    extractRecipients() 開始: ' + messageId);
 
     // Advanced Gmail APIでRAW形式を取得
+    Logger.log('    → Gmail API呼び出し...');
     var gmailMessage = Gmail.Users.Messages.get('me', messageId, {
       format: 'raw'
     });
 
-    // Base64url デコード
-    var rawData = Utilities.newBlob(
-      Utilities.base64Decode(gmailMessage.raw, Utilities.Charset.UTF_8)
-    ).getDataAsString();
+    Logger.log('    ✓ RAWメッセージ取得成功');
 
+    // Base64デコード（WebSafe形式）
+    Logger.log('    → Base64デコード中...');
+    var rawBytes = Utilities.base64Decode(gmailMessage.raw);
+    var rawData = Utilities.newBlob(rawBytes).getDataAsString();
+
+    Logger.log('    ✓ デコード成功: ' + rawData.length + ' 文字');
     Logger.log('--- RAWメッセージヘッダー（最初の2000文字） ---');
-    Logger.log(rawData.substring(0, 2000));
+    Logger.log(rawData.substring(0, Math.min(2000, rawData.length)));
 
     var recipients = [];
 
