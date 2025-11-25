@@ -53,6 +53,19 @@ function processIncomingMails() {
       var message = messages[messages.length - 1];
       var messageId = message.getId();
 
+      // ★ 追跡ID存在チェック: 送信済みドラフトはスキップ
+      var plainBody = message.getPlainBody();
+      var trackingIdPattern = SYS.TRACKING.PATTERN;
+      if (trackingIdPattern.test(plainBody)) {
+        Logger.log('⚠ 追跡ID検出（送信済みドラフト）: ' + messageId);
+        Logger.log('  → このメールは processSentMailsForPassword で処理されます');
+        Logger.log('  → スキップ');
+
+        // 処理済みラベルを付与してスキップ
+        thread.addLabel(label);
+        continue;
+      }
+
       // ★★★ 重複チェック: SourceMsgIdがログに既に存在するか確認 ★★★
       var existingLog = getLogEntryBySourceMsgId(messageId);
       if (existingLog) {
